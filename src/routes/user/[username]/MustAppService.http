@@ -1,0 +1,35 @@
+// XXX sanitize ids before commiting!
+@userId=
+@productId=
+
+### Get product info
+POST https://mustapp.com/api/products
+Content-Type: application/json
+
+{
+  "ids": [{{productId}}]
+}
+
+### Get user product info & product info
+POST https://mustapp.com/api/users/id/{{userId}}/products?embed=product
+Content-Type: application/json
+
+{
+  "ids": [{{productId}}]
+}
+
+### Get user product info with review
+POST https://mustapp.com/api/users/id/{{userId}}/products?embed=review
+Content-Type: application/json
+
+{
+  "ids": [{{productId}}]
+}
+
+### Get user product info with review & product info
+POST https://mustapp.com/api/users/id/{{userId}}/products?embed=product,review
+Content-Type: application/json
+
+{
+    "ids": [{{productId}}]
+}
