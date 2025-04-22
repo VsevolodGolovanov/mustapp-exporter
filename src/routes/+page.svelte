@@ -1,24 +1,24 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { Button, Card, Input, Label } from 'flowbite-svelte';
 
-	let { form } = $props();
+	const { form } = $props();
 </script>
 
-<form method="POST"
-      action="?/getData"
-      class="grid w-full min-w-xs max-w-xs"
-      use:enhance>
-	<input aria-label="Enter Must username"
-	       type="text"
-	       placeholder="Must username"
-	       class="text-sm text-gray-base p-2 border border-gray-200 rounded"
-	       name="username"
-	       value={form?.username ?? ''}
-	       required />
-	{#if form?.error}
-		<p class="text-red-500">{form.error}</p>
-	{/if}
-	<button type="submit" class="bg-cyan-400 w-full mt-2 p-1">
-		Get data
-	</button>
-</form>
+<Card class="m-auto">
+	<div class="space-y-4 p-6 sm:p-8 md:space-y-6">
+		<form class="flex flex-col space-y-6" method="POST" action="?/getData" use:enhance>
+			<h3 class="p-0 text-xl font-medium text-gray-900 dark:text-white">Choose user</h3>
+
+			<Label class="space-y-2">
+				<span>Enter Must username</span>
+				<Input type="text" name="username" placeholder="username" value={form?.username ?? ''} required />
+			</Label>
+
+			{#if form?.error}
+				<p class="text-red-500">{form.error}</p>
+			{/if}
+			<Button type="submit">Get Must data</Button>
+		</form>
+	</div>
+</Card>

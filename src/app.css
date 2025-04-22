@@ -1,1 +1,22 @@
 @import 'tailwindcss';
+
+@plugin 'flowbite/plugin';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* https://m2.material.io/design/color/the-color-system.html#tools-for-picking-colors */
+/* picked #48b3c8 primary color */
+@theme {
+	--color-primary-50: #e1f6f9;
+	--color-primary-100: #b6e8f0;
+	--color-primary-200: #89d9e5;
+	--color-primary-300: #62c9da;
+	--color-primary-400: #4ebed1;
+	--color-primary-500: #48b3c8;
+	--color-primary-600: #43a3b6;
+	--color-primary-700: #3d8e9c;
+	--color-primary-800: #377b85;
+	--color-primary-900: #2e585b;
+}
+
+@source "../node_modules/flowbite-svelte/dist";

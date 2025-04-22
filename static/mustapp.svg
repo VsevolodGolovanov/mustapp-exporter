@@ -1,0 +1,17 @@
+<svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" fill="none">
+ <defs>
+  <linearGradient y2="0" x2="1" y1="2.76667" x1="-1.7" id="paint0_linear">
+   <stop stop-color="#0057FF"/>
+   <stop stop-color="#00B2FF" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g>
+  <title>Layer 1</title>
+  <rect x="0.16694" y="10.01669" id="svg_1" fill-opacity="0" fill="black" height="30" width="30"/>
+  <path id="svg_2" fill="url(#paint0_linear)" d="m0.48814,19.60367c0,-8.63982 0,-12.95975 2.38906,-15.86734c0.43735,-0.53228 0.92601,-1.02036 1.45893,-1.45719c2.91108,-2.38621 7.23617,-2.38621 15.88633,-2.38621c8.65022,0 12.97519,0 15.88627,2.38621c0.53296,0.43683 1.02158,0.92491 1.45902,1.45719c2.38904,2.9076 2.38904,7.22752 2.38904,15.86734c0,8.63987 0,12.95968 -2.38904,15.86728c-0.43744,0.53232 -0.92607,1.02036 -1.45902,1.45728c-2.91108,2.38618 -7.23605,2.38618 -15.88627,2.38618c-8.65016,0 -12.97526,0 -15.88633,-2.38618c-0.53292,-0.43692 -1.02158,-0.92496 -1.45893,-1.45728c-2.38906,-2.9076 -2.38906,-7.2274 -2.38906,-15.86728z"/>
+  <path transform="rotate(-75, 6.81577, 30.2629)" id="svg_3" fill="white" d="m13.81577,30.26294l-14,8l0,-8l14,-8l0,8z" clip-rule="evenodd" fill-rule="evenodd"/>
+  <path stroke-width="0" transform="rotate(43, 28.1175, 13.1914)" id="svg_4" d="m22.8587,13.16429l5.25876,-11.25294l5.25876,11.25294l-2.62938,0l0,11.30709l-5.25876,0l0,-11.30709l-2.62938,0z" stroke="#000" fill="#fff"/>
+  <path transform="rotate(-135, 22.4475, 34.1173)" id="svg_11" fill="white" d="m29.44746,34.11733l-14,8l0,-8l14,-8l0,8z" clip-rule="evenodd" fill-rule="evenodd"/>
+  <path transform="rotate(73, 13.2397, 22.8754)" id="svg_16" fill="white" d="m20.23975,22.87536l-14,8l0,-8l14,-8l0,8z" clip-rule="evenodd" fill-rule="evenodd"/>
+ </g>
+</svg>

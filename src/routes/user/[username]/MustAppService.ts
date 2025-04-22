@@ -1,17 +1,23 @@
 import { error } from '@sveltejs/kit';
-import { array, type InferType, number, object, string } from 'yup';
+import { array, boolean, date, type InferType, number, object, string } from 'yup';
+import { Fetch } from '$lib/CurrentContext.svelte';
+import _ from 'lodash';
+import { sleep } from '$lib';
 
 export class MustAppService {
 	public static async getProfile(username: string) {
-		const userPageSrc = await this.fetchUserPageSrc(username);
-		return this.extractProfileData(userPageSrc);
-	}
-
-	private static async fetchUserPageSrc(username: string) {
-		const response = await fetch(`https://mustapp.com/@${encodeURIComponent(username)}/want`, {
-			method: 'GET',
-			cache: 'reload'
-		});
+		// First went with requesting the page `https://mustapp.com/@<username>/want` and scraping
+		// `profile` from `window._start_data`, but that of course had to be requested server-side
+		// due to CORS. Then I realized GET https://mustapp.com/api/users/id/257617 returns the same
+		// data, but you still need the id. Finally, I discovered that querying by the `uri` field
+		// also works.
+		const response = await Fetch.get()(
+			`https://mustapp.com/api/users/uri/${encodeURIComponent(username)}`,
+			{
+				method: 'GET',
+				cache: 'reload'
+			}
+		);
 
 		if (!response.ok) {
 			error(
@@ -21,28 +27,51 @@ export class MustAppService {
 			);
 		}
 
-		return response.text();
+		const responseText = await response.text();
+		return profileSchema.cast(responseText, { stripUnknown: true });
 	}
 
-	private static extractProfileData(userPageSrc: string) {
-		const startDataIdx = userPageSrc.indexOf('window._start_data =');
-
-		const profileFieldStart = 'profile:';
-		const profileValueStartIdx =
-			userPageSrc.indexOf(profileFieldStart, startDataIdx) + profileFieldStart.length;
-
-		const profileValueEndIdx = userPageSrc.indexOf(',\n', profileValueStartIdx);
-
-		const profileValueJsonStr = userPageSrc.substring(profileValueStartIdx, profileValueEndIdx);
-
-		return profileSchema.cast(profileValueJsonStr, { stripUnknown: true });
+	public static async getUserProductLists(profile: Profile) {
+		// it'd be nice to be able to use _.mapValues, but problematic with async, especially since I
+		// want to load the lists strictly sequentially
+		let resultLists = {};
+		// here and everywhere else I'm going off keys(lists) in case I decide to uncomment
+		// `youtube` in the `profileSchema` below
+		for (const listKey of Object.keys(profile.lists) as (keyof Profile['lists'])[]) {
+			console.log(`Batch fetching ${listKey} list`);
+			const list = profile.lists[listKey];
+			resultLists = {
+				...resultLists,
+				[listKey]: await this.getUserProductListBatched(profile.id, list)
+			};
+		}
+		return resultLists as UserProductLists;
 	}
 
-	public static async getUserProductList(
+	private static async getUserProductListBatched(userId: number, ids: number[]) {
+		// when scrolling mustapp.com fetches in batches of 30 - let's try to go a bit bigger, but not
+		// too much
+		const batchSize = 100;
+		// and let's wait between batches a bit to lessen the risk of triggering some DOS protection
+		const waitMs = 100;
+
+		const userProductList: UserProductList = [];
+		for (const idBatch of _.chunk(ids, batchSize)) {
+			// better wait before because we just fetched Profile
+			await sleep(waitMs);
+			userProductList.push(...(await MustAppService.getUserProductList(userId, idBatch)));
+			console.log(`Fetched ${userProductList.length}/${ids.length} items`);
+		}
+
+		return userProductList;
+	}
+
+	private static async getUserProductList(
 		userId: number,
 		productIds: number[]
 	): Promise<UserProductList> {
-		const response = await fetch(
+		// getting preflight OPTIONS requests here if requesting client-side. oh, well...
+		const response = await Fetch.get()(
 			`https://mustapp.com/api/users/id/${userId}/products?embed=product,review`,
 			{
 				method: 'POST',
@@ -63,15 +92,15 @@ export class MustAppService {
 	}
 }
 
-const idListSchema = array(number().required()).required();
+const userProductIdListSchema = array(number().required()).required();
 
 const profileSchema = object({
 	id: number().required(),
 	lists: object({
-		want: idListSchema,
-		shows: idListSchema,
-		watched: idListSchema
-		// youtube: idListSchema
+		want: userProductIdListSchema,
+		shows: userProductIdListSchema,
+		watched: userProductIdListSchema
+		// youtube: userProductIdListSchema
 	}).required()
 	// skip other stuff
 })
@@ -80,42 +109,51 @@ const profileSchema = object({
 
 export type Profile = InferType<typeof profileSchema>;
 
-const userProductListSchema = array(
-	object({
-		userProductInfo: object({
-			// "modified_at": "2020-01-01T00:00:00.000000Z",
-			// "user_id": <id>,
-			// "product_id": <id>,
-			// "status": "watched",
-			// "discussion_id": <id>,
-			rate: number().nullable()
-			// "reviewed": true,
-			// "review": {
-			// 	"reviewed_at": "2020-01-01T00:00:00.000000Z",
-			// 	"body": "review"
-			// },
-			// "is_disliked": false,
-			// "is_notification_enabled": null
+const userProductListEntrySchema = object({
+	userProductInfo: object({
+		modifiedAt: date(), // "2020-01-01T00:00:00.000000Z"
+		// shows only:
+		userShowInfo: object({
+			episodesWatched: number()
+			// 	"first_unwatched_episode": <id>
+		}).camelCase(),
+		// "user_id": <id>,
+		// "product_id": <id>,
+		// "status": "watched",
+		// "discussion_id": <id>,
+		rate: number().nullable(),
+		reviewed: boolean().required(),
+		review: object({
+			reviewedAt: date(), //"2020-01-01T00:00:00.000000Z"
+			body: string()
 		})
-			.required()
-			.camelCase(),
-		product: object({
-			// "id": <id>,
-			// "type": "movie",
-			title: string().required()
-			// "release_date": "2015-01-01",
-			// "poster_file_path": "/<...>.jpg",
-			// "trailer_url": "https://www.youtube.com/watch?v=<...>",
-			// "items_count": 0,
-			// "items_released_count": 0,
-			// "subtitle": null,
-			// "runtime": 1000
-		})
-			.required()
+			.nullable()
 			.camelCase()
-	}).camelCase()
-)
-	.required()
-	.json();
+		// "is_disliked": false,
+		// "is_notification_enabled": null
+	})
+		.required()
+		.camelCase(),
+	product: object({
+		// "id": <id>,
+		// "type": "movie",
+		title: string().required(),
+		releaseDate: date().nullable(), //"2015-01-01"
+		// "poster_file_path": "/<...>.jpg"
+		// "trailer_url": "https://www.youtube.com/watch?v=<...>"
+		itemsCount: number().nullable(), // = released + unreleased
+		itemsReleasedCount: number().nullable()
+		// "subtitle": null,
+		// "runtime": 1000
+	})
+		.required()
+		.camelCase()
+}).camelCase();
+
+export type UserProductListEntry = InferType<typeof userProductListEntrySchema>;
+
+const userProductListSchema = array(userProductListEntrySchema).required().json();
 
 export type UserProductList = InferType<typeof userProductListSchema>;
+
+export type UserProductLists = Record<keyof Profile['lists'], UserProductList>;
