@@ -12,16 +12,21 @@
 		TableHeadCell,
 		Tabs
 	} from 'flowbite-svelte';
-	import { setSnippets } from '$lib/layout-snippets.svelte';
 	import type { LayoutSnippets } from '../../+layout.svelte';
 	import { AnnotationOutline, ArrowUpRightFromSquareOutline, DownloadOutline } from 'flowbite-svelte-icons';
-	import type { UserProductListEntry, UserProductLists } from './MustAppService';
+	import type { UserProductListEntry, UserProductListKey, UserProductLists } from './MustAppService';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
+	import { setSnippets } from '$lib/layout-snippets.svelte';
+	import _ from 'lodash';
+	import type { PageProps } from './$types';
+	import { checkNonNullable } from '$lib';
 
 	// tried importing icon  directly like https://flowbite-svelte.com/icons/svelte-5#Faster_compiling shows:
 	// import ArrowUpRightFromSquareOutline from 'flowbite-svelte-icons/ArrowUpRightFromSquareOutline.svelte';
 	// it works, but IDEA removes the import as "unused" :\
+
+	console.log('Running page script');
 
 	// Svelte advises against using enums here, so just an object
 	/** All possible columns. */
@@ -36,7 +41,7 @@
 
 	type ColValues = typeof Cols[keyof typeof Cols];
 
-	const columns: { [list in keyof UserProductLists]: ColValues[] } = {
+	const columns: { [listKey in UserProductListKey]: ColValues[] } = {
 		want: [Cols.Name, Cols.ReleaseDate],
 		shows: [Cols.Name, Cols.ReleaseDate, Cols.Modified, Cols.Rating, Cols.Review, Cols.Watched],
 		watched: [Cols.Name, Cols.ReleaseDate, Cols.Modified, Cols.Rating, Cols.Review]
@@ -89,20 +94,52 @@
 		}
 	};
 
-
-	const { data } = $props();
+	const { data }: PageProps = $props();
 
 	setSnippets<LayoutSnippets>({ layoutHeaderCenter });
 
-	let selectedList = $state(data.lists[0].key);
+	let selectedList = $state<UserProductListKey>();
 	let expandedRow = $state<number | null>(null);
 
-	const selectList = (list: keyof UserProductLists) => {
+	const selectList = (list: UserProductListKey) => {
 		selectedList = list;
 		expandedRow = null;
 	};
 	const toggleRow = (row: UserProductListEntry, idx: number) => {
 		expandedRow = expandedRow === idx ? null : (row.userProductInfo.reviewed ? idx : null);
+	};
+
+	let lists: {
+		key: UserProductListKey,
+		name: string,
+		count: number
+	}[] = $derived([]);
+
+	// let's chain `then`s, so that it's enough for the UI below to wait on a single promise until all
+	// derived stuff is ready
+	let userProductListsChain = $derived(data.userProductLists.then(upLists => {
+		console.log('userProductLists resolved - calculating derivatives');
+
+		lists = Object.entries(upLists).map(([name, list]) => {
+			return {
+				key: name as UserProductListKey,
+				name: _.startCase(name),
+				count: list.length
+			};
+		});
+
+		if (!selectedList) {
+			console.log('selecting default list');
+			selectList(lists[0].key);
+		}
+
+		return upLists;
+	}));
+
+	// casting helper, because casting in-place in markup currently leads to annoying parser errors:
+	// https://youtrack.jetbrains.com/issue/WEB-61819/Svelte-5-TypeScript-in-markup-expressions -->
+	const castToNumber = (value: ReturnType<typeof getCellValue>) => {
+		return value as number;
 	};
 </script>
 
@@ -121,6 +158,16 @@
 {/snippet}
 
 <Card class="min-w-full">
+	{#await userProductListsChain}
+		Loading...
+	{:then userProductLists}
+		{@render table(userProductLists)}
+	{/await}
+</Card>
+
+{#snippet table(userProductLists: UserProductLists)}
+	{checkNonNullable(selectedList)}
+
 	<!-- TODO ugh, easier to calc max-height here for now, rather than to "pass it down" from above... -->
 	<div id="table-scroll-container" class="relative overflow-y-scroll rounded-md"
 	     style="max-height: calc(100vh - 11rem)">
@@ -135,7 +182,7 @@
 							<!-- I use Tabs without content as the input here, because I prefer them to radio
 								buttons in this case visually -->
 							<Tabs tabStyle="pill" contentClass="hidden" class="flex-none">
-								{#each data.lists as list (list.key)}
+								{#each lists as list (list.key)}
 									<TabItem open={selectedList === list.key} title={`${list.name} (${list.count})`}
 									         on:click={() => selectList(list.key)} />
 								{/each}
@@ -143,7 +190,7 @@
 
 							<!-- EXPORT -->
 							<div class="flex-shrink text-right content-center">
-								<a href="" class="flex place-content-end items-center gap-1 text-base font-normal">
+								<a href="..." class="flex place-content-end items-center gap-1 text-base font-normal">
 									<!-- FIXME export -->
 									Export
 									<DownloadOutline />
@@ -162,7 +209,7 @@
 			</TableHead>
 
 			<TableBody>
-				{#each data.tableData[selectedList] as row, idx (row)}
+				{#each userProductLists[selectedList] as row, idx (row)}
 					<!-- MAIN ROW -->
 					<TableBodyRow on:click={() => toggleRow(row, idx)}
 					              title={row.userProductInfo.reviewed ? 'Click the row to see the review': null}>
@@ -176,11 +223,9 @@
 									{/if}
 								{:else if col === Cols.Rating}
 									{#if cellValue != null}
-										<!-- parser errors on casting due to:
-											https://youtrack.jetbrains.com/issue/WEB-61819/Svelte-5-TypeScript-in-markup-expressions -->
-										{@const ratingColor = getRatingColor(cellValue as number)}
+										{@const ratingColor = getRatingColor(castToNumber(cellValue))}
 										<!-- Rating title doesn't show: https://github.com/themesberg/flowbite-svelte/issues/1576 -->
-										<Rating total={5} rating={cellValue as number / 2} size={20} class="[&>*]:-m-0.5"
+										<Rating total={5} rating={castToNumber(cellValue) / 2} size={20} class="[&>*]:-m-0.5"
 										        iconFillColor={ratingColor} iconStrokeColor={ratingColor}
 										        title={'' + cellValue} />
 									{/if}
@@ -211,4 +256,4 @@
 			</TableBody>
 		</Table>
 	</div>
-</Card>
+{/snippet}

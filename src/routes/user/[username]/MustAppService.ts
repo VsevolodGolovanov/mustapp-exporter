@@ -37,7 +37,7 @@ export class MustAppService {
 		let resultLists = {};
 		// here and everywhere else I'm going off keys(lists) in case I decide to uncomment
 		// `youtube` in the `profileSchema` below
-		for (const listKey of Object.keys(profile.lists) as (keyof Profile['lists'])[]) {
+		for (const listKey of Object.keys(profile.lists) as UserProductListKey[]) {
 			console.log(`Batch fetching ${listKey} list`);
 			const list = profile.lists[listKey];
 			resultLists = {
@@ -156,4 +156,6 @@ const userProductListSchema = array(userProductListEntrySchema).required().json(
 
 export type UserProductList = InferType<typeof userProductListSchema>;
 
-export type UserProductLists = Record<keyof Profile['lists'], UserProductList>;
+export type UserProductListKey = keyof Profile['lists'];
+
+export type UserProductLists = Record<UserProductListKey, UserProductList>;

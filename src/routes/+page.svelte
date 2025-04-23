@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Button, Card, Input, Label } from 'flowbite-svelte';
+	import type { PageProps } from './$types';
 
-	const { form } = $props();
+	const { form }: PageProps = $props();
 </script>
 
 <Card class="m-auto">

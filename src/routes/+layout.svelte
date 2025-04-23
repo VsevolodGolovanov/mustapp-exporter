@@ -1,17 +1,16 @@
+<script module lang="ts">
+	import type { Snippet } from 'svelte';
+
+	export type LayoutSnippets = { layoutHeaderCenter?: Snippet };
+</script>
+
 <script lang="ts">
 	import '../app.css';
 	import { DarkMode, Navbar, NavBrand } from 'flowbite-svelte';
-	import type { Snippet } from 'svelte';
 	import { initSnippets } from '$lib/layout-snippets.svelte';
+	import type { LayoutProps } from './$types';
 
-	interface Props {
-		children: Snippet;
-		layoutHeaderCenter: Snippet;
-	}
-
-	const { children }: Props = $props();
-
-	export type LayoutSnippets = { layoutHeaderCenter?: Snippet };
+	const { children }: LayoutProps = $props();
 
 	// https://github.com/sveltejs/kit/issues/12928
 	const snippets = initSnippets<LayoutSnippets>();

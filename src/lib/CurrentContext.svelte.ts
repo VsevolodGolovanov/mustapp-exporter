@@ -1,3 +1,5 @@
+import { checkNonNullable } from '$lib/index';
+
 export type FetchFunc = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 const currentContext: { fetchFunc?: FetchFunc } = $state({});
@@ -12,7 +14,7 @@ export class Fetch {
 	}
 
 	static get(): FetchFunc {
-		if (!currentContext.fetchFunc) throw new Error('currentContext.fetchFunc');
+		checkNonNullable(currentContext.fetchFunc, 'currentContext.fetchFunc');
 		return currentContext.fetchFunc;
 	}
 }

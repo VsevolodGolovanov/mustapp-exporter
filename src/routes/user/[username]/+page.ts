@@ -1,5 +1,4 @@
 import { MustAppService, type Profile, type UserProductLists } from './MustAppService';
-import _ from 'lodash';
 import { Fetch } from '$lib/CurrentContext.svelte';
 import { MustAppClientCacheService } from './MustAppClientCacheService';
 
@@ -8,7 +7,7 @@ export async function load({ fetch, url, params: { username } }) {
 
 	let profile: Profile;
 	let fetchTimestamp: Date;
-	let userProductLists;
+	let userProductLists: Promise<UserProductLists>;
 
 	const cacheService = new MustAppClientCacheService();
 	let cacheData;
@@ -23,7 +22,7 @@ export async function load({ fetch, url, params: { username } }) {
 
 		fetchTimestamp = cacheData.fetchTimestamp;
 		profile = cacheData.profile;
-		userProductLists = cacheData.userProductLists;
+		userProductLists = Promise.resolve(cacheData.userProductLists);
 	} else {
 		console.log('No cached data - fetching');
 		Fetch.set(fetch);
@@ -39,23 +38,19 @@ export async function load({ fetch, url, params: { username } }) {
 				`shows ${lists.shows.length}, watched ${lists.watched.length}`
 		);
 
-		userProductLists = await MustAppService.getUserProductLists(profile);
-		console.log('Fetched lists');
-
-		await cacheService.setData({ username, fetchTimestamp, profile, userProductLists });
+		userProductLists = MustAppService.getUserProductLists(profile);
+		userProductLists.then((upLists) => {
+			console.log('Fetched lists');
+			cacheService
+				.setData({ username, fetchTimestamp, profile, userProductLists: upLists })
+				.then(() => console.log('userProductLists cached'));
+		});
 	}
 
 	return {
-		username: username,
-		fetchTimestamp: fetchTimestamp,
+		username,
+		fetchTimestamp,
 		userId: profile.id,
-		lists: Object.entries(userProductLists).map(([name, list]) => {
-			return {
-				key: name as keyof UserProductLists,
-				name: _.startCase(name),
-				count: list.length
-			};
-		}),
-		tableData: userProductLists
+		userProductLists
 	};
 }
