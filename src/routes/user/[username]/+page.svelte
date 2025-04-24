@@ -2,6 +2,7 @@
 	import {
 		Button,
 		Card,
+		Progressbar,
 		Rating,
 		TabItem,
 		Table,
@@ -20,7 +21,8 @@
 	import { setSnippets } from '$lib/layout-snippets.svelte';
 	import _ from 'lodash';
 	import type { PageProps } from './$types';
-	import { checkNonNullable } from '$lib';
+	import { checkNonNullable, sleep } from '$lib';
+	import type { ListDescriptor } from './+page';
 
 	// tried importing icon  directly like https://flowbite-svelte.com/icons/svelte-5#Faster_compiling shows:
 	// import ArrowUpRightFromSquareOutline from 'flowbite-svelte-icons/ArrowUpRightFromSquareOutline.svelte';
@@ -98,43 +100,39 @@
 
 	setSnippets<LayoutSnippets>({ layoutHeaderCenter });
 
-	let selectedList = $state<UserProductListKey>();
-	let expandedRow = $state<number | null>(null);
-
+	let selectedList = $state<UserProductListKey>(data.lists[0].key);
 	const selectList = (list: UserProductListKey) => {
 		selectedList = list;
 		expandedRow = null;
 	};
+
+	let expandedRow = $state<number | null>(null);
 	const toggleRow = (row: UserProductListEntry, idx: number) => {
 		expandedRow = expandedRow === idx ? null : (row.userProductInfo.reviewed ? idx : null);
 	};
 
-	let lists: {
-		key: UserProductListKey,
-		name: string,
-		count: number
-	}[] = $derived([]);
-
-	// let's chain `then`s, so that it's enough for the UI below to wait on a single promise until all
-	// derived stuff is ready
-	let userProductListsChain = $derived(data.userProductLists.then(upLists => {
-		console.log('userProductLists resolved - calculating derivatives');
-
-		lists = Object.entries(upLists).map(([name, list]) => {
-			return {
-				key: name as UserProductListKey,
-				name: _.startCase(name),
-				count: list.length
-			};
-		});
-
-		if (!selectedList) {
-			console.log('selecting default list');
-			selectList(lists[0].key);
+	let loadingUserProductListsState = $derived(
+		_.mapValues(data.loadingUserProductLists, () => 0) as Record<UserProductListKey, number>);
+	$effect(() => {
+		if (data.loadingUserProductLists) {
+			Object.entries(data.loadingUserProductLists).forEach(([listKey, batches]) => {
+				batches.forEach(b => {
+					b.then(res => {
+						loadingUserProductListsState[listKey as UserProductListKey] += res.length;
+						// deriveds are not deeply reactive, so let's clone the object to force a UI update
+						loadingUserProductListsState = { ...loadingUserProductListsState };
+					});
+				});
+			});
 		}
-
-		return upLists;
-	}));
+	});
+	// if we just #await for data.userProductLists then the last progress bar never makes it to 100% - so let's wrap
+	// data.userProductLists with `all(data.loadingUserProductLists)` + a little sleep
+	const loadingUserProductListsAll = $derived(data.loadingUserProductLists
+		? Promise.all(Object.values(data.loadingUserProductLists).flat(1)).then(async () => {
+			await sleep(300);
+			return await data.userProductLists;
+		}) : data.userProductLists);
 
 	// casting helper, because casting in-place in markup currently leads to annoying parser errors:
 	// https://youtrack.jetbrains.com/issue/WEB-61819/Svelte-5-TypeScript-in-markup-expressions -->
@@ -158,12 +156,27 @@
 {/snippet}
 
 <Card class="min-w-full">
-	{#await userProductListsChain}
-		Loading...
+	{#await loadingUserProductListsAll}
+		{@render loading()}
 	{:then userProductLists}
 		{@render table(userProductLists)}
 	{/await}
 </Card>
+
+{#snippet loading()}
+	{#each data.lists as list (list.key)}
+		{@render loadingList(list)}
+	{/each}
+{/snippet}
+
+{#snippet loadingList(list: ListDescriptor)}
+	{#if list.key in loadingUserProductListsState}
+		<p class="m-4">
+			<Progressbar progress={Math.round(100 * loadingUserProductListsState[list.key] / list.entryCount)}
+			             labelOutside={list.name} size="h-4" animate />
+		</p>
+	{/if}
+{/snippet}
 
 {#snippet table(userProductLists: UserProductLists)}
 	{checkNonNullable(selectedList)}
@@ -182,8 +195,8 @@
 							<!-- I use Tabs without content as the input here, because I prefer them to radio
 								buttons in this case visually -->
 							<Tabs tabStyle="pill" contentClass="hidden" class="flex-none">
-								{#each lists as list (list.key)}
-									<TabItem open={selectedList === list.key} title={`${list.name} (${list.count})`}
+								{#each data.lists as list (list.key)}
+									<TabItem open={selectedList === list.key} title={`${list.name} (${list.entryCount})`}
 									         on:click={() => selectList(list.key)} />
 								{/each}
 							</Tabs>

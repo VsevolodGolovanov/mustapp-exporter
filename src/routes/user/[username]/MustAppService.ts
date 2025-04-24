@@ -31,39 +31,79 @@ export class MustAppService {
 		return profileSchema.cast(responseText, { stripUnknown: true });
 	}
 
-	public static async getUserProductLists(profile: Profile) {
-		// it'd be nice to be able to use _.mapValues, but problematic with async, especially since I
-		// want to load the lists strictly sequentially
-		let resultLists = {};
-		// here and everywhere else I'm going off keys(lists) in case I decide to uncomment
-		// `youtube` in the `profileSchema` below
-		for (const listKey of Object.keys(profile.lists) as UserProductListKey[]) {
-			console.log(`Batch fetching ${listKey} list`);
-			const list = profile.lists[listKey];
-			resultLists = {
-				...resultLists,
-				[listKey]: await this.getUserProductListBatched(profile.id, list)
-			};
-		}
-		return resultLists as UserProductLists;
+	/**
+	 * Returns n Promises for each list to allow the UI to track progress.
+	 *
+	 * Of course, knowing that this also executes client-side I could've kept it simple here by
+	 * returning a single Promise and achieving sequential execution with `await`s, and just tracked
+	 * progress via some shared $state. But I wanted to do this in a universal way, as if this could
+	 * execute server-side. Svelte does seem to support real streaming, but I'm not sure if it's
+	 * supported universally or only server-side, and there is no documentation currently:
+	 * https://stackoverflow.com/questions/74879852/how-can-i-implement-server-sent-events-sse-in-sveltekit
+	 * So I'm going with Promises.
+	 *
+	 * There are ofc libraries for sequential execution, e.g.: https://www.npmjs.com/package/p-queue,
+	 * https://github.com/sindresorhus/promise-fun; probably there are even libraries for simulating
+	 * multiresolvable Promises or something like semaphores to track progress. But I'm here to learn
+	 * and explore, so I want to do this myself this time.
+	 *
+	 * @param profile
+	 */
+	public static getUserProductLists(profile: Profile) {
+		// here and everywhere else I'm going off keys(lists) in case I decide to uncomment `youtube` in
+		// the `profileSchema` below
+		const accumulator = _.transform(
+			profile.lists,
+			(accumulator, value, listKey) => {
+				console.log(`Scheduling ${listKey} list batch fetch`);
+
+				// chaining the list fetches via `previousBatch` because I want to load them strictly
+				// sequentially
+				const listBatched = this.getUserProductListBatched(
+					accumulator.previousBatch,
+					profile.id,
+					value
+				);
+
+				accumulator.result = {
+					...accumulator.result,
+					[listKey]: listBatched
+				};
+				if (listBatched.length > 0) {
+					accumulator.previousBatch = listBatched.at(-1)!;
+				}
+			},
+			{ result: {}, previousBatch: Promise.resolve<unknown>(null) }
+		);
+		return accumulator.result as Record<UserProductListKey, Promise<UserProductList>[]>;
 	}
 
-	private static async getUserProductListBatched(userId: number, ids: number[]) {
+	private static getUserProductListBatched(
+		previousBatch: Promise<unknown>,
+		userId: number,
+		ids: number[]
+	) {
 		// when scrolling mustapp.com fetches in batches of 30 - let's try to go a bit bigger, but not
 		// too much
 		const batchSize = 100;
 		// and let's wait between batches a bit to lessen the risk of triggering some DOS protection
 		const waitMs = 100;
 
-		const userProductList: UserProductList = [];
+		const batches: Promise<UserProductList>[] = [];
 		for (const idBatch of _.chunk(ids, batchSize)) {
-			// better wait before because we just fetched Profile
-			await sleep(waitMs);
-			userProductList.push(...(await MustAppService.getUserProductList(userId, idBatch)));
-			console.log(`Fetched ${userProductList.length}/${ids.length} items`);
+			const batch = previousBatch.then(async () => {
+				// better wait before fetching because at first iteration we just fetched Profile, and at
+				// last iteration no need to wait after fetching
+				await sleep(waitMs);
+				return await MustAppService.getUserProductList(userId, idBatch);
+			});
+			batches.push(batch);
+			previousBatch = batch;
+			const scheduledEntries = Math.min(batches.length * batchSize, ids.length);
+			console.log(`Scheduled batch fetch of ${scheduledEntries}/${ids.length} entries`);
 		}
 
-		return userProductList;
+		return batches;
 	}
 
 	private static async getUserProductList(
