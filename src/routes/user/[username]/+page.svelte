@@ -21,8 +21,9 @@
 	import { setSnippets } from '$lib/layout-snippets.svelte';
 	import _ from 'lodash';
 	import type { PageProps } from './$types';
-	import { checkNonNullable, sleep } from '$lib';
+	import { checkNonNullable, checkState, sleep } from '$lib';
 	import type { ListDescriptor } from './+page';
+	import { ExportService } from './ExportService';
 
 	// tried importing icon  directly like https://flowbite-svelte.com/icons/svelte-5#Faster_compiling shows:
 	// import ArrowUpRightFromSquareOutline from 'flowbite-svelte-icons/ArrowUpRightFromSquareOutline.svelte';
@@ -35,37 +36,39 @@
 	const Cols = {
 		Name: 'Name',
 		ReleaseDate: 'Release date',
-		Modified: 'Modified',
-		Rating: 'Rating',
-		Review: 'Review',
-		Watched: 'Watched/Released(/Total)'
+		ModifiedAt: 'Modified',
+		MovieRating: 'Rating',
+		MovieReview: 'Review',
+		Episodes: 'Watched/Released(/Total)'
 	} as const;
 
-	type ColValues = typeof Cols[keyof typeof Cols];
+	type ColNames = typeof Cols[keyof typeof Cols];
 
-	const columns: { [listKey in UserProductListKey]: ColValues[] } = {
+	const columns: { [listKey in UserProductListKey]: ColNames[] } = {
 		want: [Cols.Name, Cols.ReleaseDate],
-		shows: [Cols.Name, Cols.ReleaseDate, Cols.Modified, Cols.Rating, Cols.Review, Cols.Watched],
-		watched: [Cols.Name, Cols.ReleaseDate, Cols.Modified, Cols.Rating, Cols.Review]
+		shows: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
+		watched: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.MovieReview]
 	};
 
-	const getCellValue = (row: UserProductListEntry, col: ColValues): string | number | boolean | null | undefined => {
+	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | null | undefined => {
 		switch (col) {
 			case Cols.Name:
 				return row.product.title;
 			case Cols.ReleaseDate:
 				return row.product.releaseDate?.toLocaleDateString();
-			case Cols.Modified:
+			case Cols.ModifiedAt:
 				return row.userProductInfo.modifiedAt?.toLocaleString();
-			case Cols.Rating:
+			case Cols.MovieRating:
 				return row.userProductInfo.rate;
-			case Cols.Review:
+			case Cols.MovieReview:
 				return row.userProductInfo.reviewed;
-			case Cols.Watched:
+			case Cols.Episodes:
 				return row.userProductInfo.userShowInfo.episodesWatched
 					+ '/' + row.product.itemsReleasedCount
 					+ (row.product.itemsReleasedCount != null && row.product.itemsCount != null &&
 					row.product.itemsReleasedCount < row.product.itemsCount ? ('/' + row.product.itemsCount) : '');
+			default:
+				checkState(false);
 		}
 	};
 
@@ -203,11 +206,10 @@
 
 							<!-- EXPORT -->
 							<div class="flex-shrink text-right content-center">
-								<a href="..." class="flex place-content-end items-center gap-1 text-base font-normal">
-									<!-- FIXME export -->
+								<Button on:click={() => ExportService.export(userProductLists, data.fetchTimestamp)}>
 									Export
 									<DownloadOutline />
-								</a>
+								</Button>
 							</div>
 						</div>
 					</th>
@@ -230,11 +232,11 @@
 							<!-- max-w and overflow are for the Name ofc -->
 							<TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
 								{@const cellValue = getCellValue(row, col)}
-								{#if col === Cols.Review}
+								{#if col === Cols.MovieReview}
 									{#if cellValue}
 										<AnnotationOutline />
 									{/if}
-								{:else if col === Cols.Rating}
+								{:else if col === Cols.MovieRating}
 									{#if cellValue != null}
 										{@const ratingColor = getRatingColor(castToNumber(cellValue))}
 										<!-- Rating title doesn't show: https://github.com/themesberg/flowbite-svelte/issues/1576 -->
