@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { array, boolean, date, type InferType, number, object, string } from 'yup';
-import { Fetch } from '$lib/CurrentContext.svelte';
+import { Fetch } from '$lib/CurrentContext.svelte.js';
 import _ from 'lodash';
 import { sleep } from '$lib';
 

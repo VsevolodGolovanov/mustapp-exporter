@@ -13,7 +13,7 @@
 
 			<Label class="space-y-2">
 				<span>Enter Must username</span>
-				<Input type="text" name="username" placeholder="username" value={form?.username ?? ''} required />
+				<Input type="text" name="username" placeholder="Username" value={form?.username ?? ''} required />
 			</Label>
 
 			{#if form?.error}
