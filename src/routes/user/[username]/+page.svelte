@@ -38,7 +38,7 @@
 		ReleaseDate: 'Release date',
 		ModifiedAt: 'Modified',
 		MovieRating: 'Rating',
-		MovieReview: 'Review',
+		HasMovieReview: 'Review',
 		Episodes: 'Watched/Released(/Total)'
 	} as const;
 
@@ -47,7 +47,7 @@
 	const columns: { [listKey in UserProductListKey]: ColNames[] } = {
 		want: [Cols.Name, Cols.ReleaseDate],
 		shows: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
-		watched: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.MovieReview]
+		watched: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
 	};
 
 	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | null | undefined => {
@@ -60,7 +60,7 @@
 				return row.userProductInfo.modifiedAt?.toLocaleString();
 			case Cols.MovieRating:
 				return row.userProductInfo.rate;
-			case Cols.MovieReview:
+			case Cols.HasMovieReview:
 				return row.userProductInfo.reviewed;
 			case Cols.Episodes:
 				return row.userProductInfo.userShowInfo.episodesWatched
@@ -176,7 +176,7 @@
 	{#if list.key in loadingUserProductListsState}
 		<p class="m-4">
 			<Progressbar progress={Math.round(100 * loadingUserProductListsState[list.key] / list.entryCount)}
-			             labelOutside={list.name} size="h-4" animate />
+			             labelOutside={`${list.name} (${list.entryCount})`} size="h-4" animate />
 		</p>
 	{/if}
 {/snippet}
@@ -187,7 +187,7 @@
 	<!-- TODO ugh, easier to calc max-height here for now, rather than to "pass it down" from above... -->
 	<div id="table-scroll-container" class="relative overflow-y-scroll rounded-md"
 	     style="max-height: calc(100vh - 11rem)">
-		<Table divClass="need-to-override-overflow-here-for-sticky-header-to-work">
+		<Table divClass="need-to-override-overflow-here-for-sticky-header-to-work" hoverable={true}>
 
 			<TableHead class="sticky top-0 normal-case" defaultRow={false}>
 				<!-- TABLE HEADER: CONTROLS -->
@@ -226,13 +226,17 @@
 			<TableBody>
 				{#each userProductLists[selectedList] as row, idx (row)}
 					<!-- MAIN ROW -->
+					<!-- `<Table hoverable={true}` makes all rows hoverable - let's cancel it out for rows
+						without reviews using tailwind-merge (which Flowbite provides and documents). This way
+						we don't have to hardcode any background colors, which is nice. -->
 					<TableBodyRow on:click={() => toggleRow(row, idx)}
+					              class={[!row.userProductInfo.reviewed && 'hover:bg- dark:hover:bg-']}
 					              title={row.userProductInfo.reviewed ? 'Click the row to see the review': null}>
 						{#each columns[selectedList] as col (col)}
 							<!-- max-w and overflow are for the Name ofc -->
 							<TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
 								{@const cellValue = getCellValue(row, col)}
-								{#if col === Cols.MovieReview}
+								{#if col === Cols.HasMovieReview}
 									{#if cellValue}
 										<AnnotationOutline />
 									{/if}
@@ -253,15 +257,17 @@
 
 					<!-- EXPANDED ROW (REVIEW) -->
 					{#if expandedRow === idx}
-						<TableBodyRow>
+						<!-- not hoverable (for details see main row above) -->
+						<TableBodyRow class="hover:bg- dark:hover:bg-">
 							<TableBodyCell colspan={columns[selectedList].length}>
 								<div class="flex gap-2">
 									<div class="flex-none">
 										<hr class="w-px h-full border-0 border-l border-gray-200 dark:border-gray-700" />
 									</div>
 									<div class="flex-1">
-										<h4>Reviewed at {row.userProductInfo.review?.reviewedAt?.toLocaleString()}:</h4>
-										<p>{row.userProductInfo.review?.body}</p>
+										<h4 class="mb-1 font-semibold text-gray-700 dark:text-gray-400">Reviewed
+											at {row.userProductInfo.review?.reviewedAt?.toLocaleString()}:</h4>
+										<p class="text-wrap">{row.userProductInfo.review?.body}</p>
 									</div>
 								</div>
 							</TableBodyCell>
@@ -269,6 +275,7 @@
 					{/if}
 				{/each}
 			</TableBody>
+
 		</Table>
 	</div>
 {/snippet}
