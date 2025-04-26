@@ -19,6 +19,7 @@
 	import { debouncer } from '$lib/Utils.svelte';
 	import { checkState } from '$lib/Checks';
 	import { isBlank } from '$lib/Strings';
+	import _ from 'lodash';
 
 	console.log('Initializing UserProductListsTable');
 
@@ -41,25 +42,41 @@
 		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
 	};
 
-	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | null | undefined => {
+	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | Date | null | undefined => {
 		switch (col) {
 			case Cols.Title:
 				return row.product.title;
 			case Cols.ReleaseDate:
-				return row.product.releaseDate?.toLocaleDateString();
+				return row.product.releaseDate;
 			case Cols.ModifiedAt:
-				return row.userProductInfo.modifiedAt?.toLocaleString();
+				return row.userProductInfo.modifiedAt;
 			case Cols.MovieRating:
 				return row.userProductInfo.rate;
 			case Cols.HasMovieReview:
 				return row.userProductInfo.reviewed;
 			case Cols.Episodes:
+				return row.userProductInfo.userShowInfo.episodesWatched;
+			default:
+				checkState(false);
+		}
+	};
+
+	const getCellDisplayValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | null | undefined => {
+		switch (col) {
+			case Cols.ReleaseDate:
+				return row.product.releaseDate?.toLocaleDateString();
+			case Cols.ModifiedAt:
+				return row.userProductInfo.modifiedAt?.toLocaleString();
+			case Cols.Episodes:
 				return row.userProductInfo.userShowInfo.episodesWatched
 					+ '/' + row.product.itemsReleasedCount
 					+ (row.product.itemsReleasedCount != null && row.product.itemsCount != null &&
 					row.product.itemsReleasedCount < row.product.itemsCount ? ('/' + row.product.itemsCount) : '');
-			default:
-				checkState(false);
+			default: {
+				const cellValue = getCellValue(row, col);
+				checkState(!(cellValue instanceof Date));
+				return cellValue;
+			}
 		}
 	};
 
@@ -102,6 +119,8 @@
 		expandedRow = null;
 	};
 
+	// `<Table filter` and `TableSearch` force their weird markup and aren't debounced, so I'm gonna
+	// do my own filter. I don't use `<Table items` anyway, so filtering myself is easy.
 	let textFilterInputValue = $state<string>();
 	const textFilterAppliedValue = $derived.by(debouncer(() => textFilterInputValue, 300));
 	let currentUserProductListFiltered = $derived.by(() => {
@@ -118,6 +137,30 @@
 		}
 	});
 
+	let sortColumn = $state<ColNames>();
+	let sortDirection = $state(true);
+	const sort = (col: ColNames) => {
+		console.log('Changing sort to/for', col);
+
+		if (sortColumn === col) {
+			sortDirection = !sortDirection;
+		} else {
+			sortColumn = col;
+			sortDirection = true;
+		}
+	};
+	let currentUserProductListFilteredSorted = $derived.by(() => {
+		if (sortColumn) {
+			const sorted = _.sortBy(currentUserProductListFiltered, (row) => getCellValue(row, sortColumn!));
+			if (!sortDirection) {
+				sorted.reverse();
+			}
+			return sorted;
+		} else {
+			return currentUserProductListFiltered;
+		}
+	});
+
 	let expandedRow = $state<number | null>(null);
 	const toggleRow = (row: UserProductListEntry, idx: number) => {
 		expandedRow = expandedRow === idx ? null : (row.userProductInfo.reviewed ? idx : null);
@@ -125,7 +168,7 @@
 
 	// casting helper, because casting in-place in markup currently leads to annoying parser errors:
 	// https://youtrack.jetbrains.com/issue/WEB-61819/Svelte-5-TypeScript-in-markup-expressions -->
-	const castToNumber = (value: ReturnType<typeof getCellValue>) => {
+	const castToNumber = (value: ReturnType<typeof getCellDisplayValue>) => {
 		return value as number;
 	};
 </script>
@@ -143,10 +186,10 @@
 						<!-- LIST SELECTOR -->
 						<!-- I use Tabs without content as the input here, because I prefer them to radio
 							buttons in this case visually -->
-						<Tabs tabStyle="pill" contentClass="hidden" class="flex-none">
+						<Tabs tabStyle="pill" contentClass="hidden" class="flex-none ">
 							{#each lists as list (list.key)}
 								<TabItem open={selectedList === list.key} title={`${list.name} (${list.entryCount})`}
-								         on:click={() => selectList(list.key)} />
+								         on:click={() => selectList(list.key)} class="*:hover:bg-gray-200" />
 							{/each}
 						</Tabs>
 
@@ -161,8 +204,8 @@
 						<!-- EXPORT -->
 						<div class="shrink text-right content-center">
 							<Button on:click={() => ExportService.export(userProductLists, fetchTimestamp)}>
+								<DownloadOutline class="me-2" />
 								Export
-								<DownloadOutline />
 							</Button>
 						</div>
 					</div>
@@ -172,13 +215,22 @@
 			<!-- COLUMN HEADERS -->
 			<tr>
 				{#each columns[selectedList] as col (col)}
-					<TableHeadCell>{col}</TableHeadCell>
+					<!-- cancel th padding, add on button instead, so the whole visual header is clickable -->
+					<TableHeadCell class="!p-0">
+						<!-- borrowed from TableHeadCell.svelte-->
+						<button class={['w-full text-left after:absolute after:pl-3 px-6 py-3',
+											'hover:bg-gray-200 dark:hover:bg-slate-600',
+											sortColumn === col && `after:content-["${sortDirection ? '▲': '▼'}"]`]}
+						        onclick={() => sort(col)}>
+							{col}
+						</button>
+					</TableHeadCell>
 				{/each}
 			</tr>
 		</TableHead>
 
 		<TableBody>
-			{#each currentUserProductListFiltered as row, idx (row)}
+			{#each currentUserProductListFilteredSorted as row, idx (row)}
 				<!-- MAIN ROW -->
 				<!-- `<Table hoverable={true}` makes all rows hoverable - let's cancel it out for rows
 					without reviews using tailwind-merge (which Flowbite provides and documents). This way
@@ -189,7 +241,7 @@
 					{#each columns[selectedList] as col (col)}
 						<!-- max-w and overflow are for the Title ofc -->
 						<TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
-							{@const cellValue = getCellValue(row, col)}
+							{@const cellValue = getCellDisplayValue(row, col)}
 							{#if col === Cols.HasMovieReview}
 								{#if cellValue}
 									<AnnotationOutline />

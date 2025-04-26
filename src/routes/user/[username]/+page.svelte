@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button, Card } from 'flowbite-svelte';
 	import type { LayoutSnippets } from '../../+layout.svelte';
-	import { ArrowUpRightFromSquareOutline } from 'flowbite-svelte-icons';
+	import { ArrowUpRightFromSquareOutline, RefreshOutline } from 'flowbite-svelte-icons';
 	import type { UserProductListKey } from './(services)/MustAppService';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -48,16 +48,18 @@
 </script>
 
 {#snippet layoutHeaderCenter()}
-	<a class="inline-flex place-content-center items-center gap-1 mr-4"
+	<a class="inline-flex place-content-center items-center gap-1 mr-8"
 	   href="https://mustapp.com/@{encodeURIComponent(data.username)}" target="_blank">
 		User: {data.username}#{data.userId}
-		<ArrowUpRightFromSquareOutline />
+		<ArrowUpRightFromSquareOutline class="ml-1" />
 	</a>
 	Last data fetch: {data.fetchTimestamp.toLocaleString()}
-	<Button type="button" onclick={async () => {
+	<Button type="button" class="ml-1" onclick={async () => {
 		await goto('?update', { invalidateAll: true });
 		replaceState(page.url.pathname, {});
-	}}>Update
+	}}>
+		<RefreshOutline class="me-2" />
+		Update
 	</Button>
 {/snippet}
 
