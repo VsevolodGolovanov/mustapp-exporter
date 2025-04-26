@@ -44,7 +44,7 @@ export class MustAppService {
 	 *
 	 * There are ofc libraries for sequential execution, e.g.: https://www.npmjs.com/package/p-queue,
 	 * https://github.com/sindresorhus/promise-fun; probably there are even libraries for simulating
-	 * multiresolvable Promises or something like semaphores to track progress. But I'm here to learn
+	 * multi-resolvable Promises or something like semaphores to track progress. But I'm here to learn
 	 * and explore, so I want to do this myself this time.
 	 *
 	 * @param profile

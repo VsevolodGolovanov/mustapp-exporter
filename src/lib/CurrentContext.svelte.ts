@@ -1,4 +1,4 @@
-import { checkNonNullable } from '$lib/index';
+import { checkNonNullable } from '$lib/Checks';
 
 export type FetchFunc = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 

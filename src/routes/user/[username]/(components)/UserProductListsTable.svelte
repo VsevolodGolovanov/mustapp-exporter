@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { UserProductListEntry, UserProductListKey, UserProductLists } from '../(services)/MustAppService';
 	import type { ListDescriptor } from '../+page';
-	import { checkNonNullable, checkState } from '$lib';
 	import {
 		Button,
 		Rating,
+		Search,
 		TabItem,
 		Table,
 		TableBody,
@@ -16,13 +16,16 @@
 	} from 'flowbite-svelte';
 	import { ExportService } from '../(services)/ExportService';
 	import { AnnotationOutline, DownloadOutline } from 'flowbite-svelte-icons';
+	import { debouncer } from '$lib/Utils.svelte';
+	import { checkState } from '$lib/Checks';
+	import { isBlank } from '$lib/Strings';
 
 	console.log('Initializing UserProductListsTable');
 
 	// Svelte advises against using enums here, so just an object
 	/** All possible columns. */
 	const Cols = {
-		Name: 'Name',
+		Title: 'Title',
 		ReleaseDate: 'Release date',
 		ModifiedAt: 'Modified',
 		MovieRating: 'Rating',
@@ -33,14 +36,14 @@
 	type ColNames = typeof Cols[keyof typeof Cols];
 
 	const columns: { [listKey in UserProductListKey]: ColNames[] } = {
-		want: [Cols.Name, Cols.ReleaseDate],
-		shows: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
-		watched: [Cols.Name, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
+		want: [Cols.Title, Cols.ReleaseDate],
+		shows: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
+		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
 	};
 
 	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | null | undefined => {
 		switch (col) {
-			case Cols.Name:
+			case Cols.Title:
 				return row.product.title;
 			case Cols.ReleaseDate:
 				return row.product.releaseDate?.toLocaleDateString();
@@ -99,6 +102,22 @@
 		expandedRow = null;
 	};
 
+	let textFilterInputValue = $state<string>();
+	const textFilterAppliedValue = $derived.by(debouncer(() => textFilterInputValue, 300));
+	let currentUserProductListFiltered = $derived.by(() => {
+		console.log(textFilterAppliedValue ? `Applying text filter "${textFilterAppliedValue}"`
+			: 'Resetting text filter');
+
+		const currentUserProductList = userProductLists[selectedList];
+
+		if (textFilterAppliedValue && !isBlank(textFilterAppliedValue)) {
+			return currentUserProductList.filter(upl =>
+				upl.product.title.toLowerCase().includes(textFilterAppliedValue.toLowerCase()));
+		} else {
+			return currentUserProductList;
+		}
+	});
+
 	let expandedRow = $state<number | null>(null);
 	const toggleRow = (row: UserProductListEntry, idx: number) => {
 		expandedRow = expandedRow === idx ? null : (row.userProductInfo.reviewed ? idx : null);
@@ -110,8 +129,6 @@
 		return value as number;
 	};
 </script>
-
-{checkNonNullable(selectedList)}
 
 <!-- TODO ugh, easier to calc max-height here for now, rather than to "pass it down" from above... -->
 <div id="table-scroll-container" class="relative overflow-y-scroll rounded-md"
@@ -133,8 +150,16 @@
 							{/each}
 						</Tabs>
 
+						<div class="ml-10">
+							<Search bind:value={textFilterInputValue} placeholder="Title search" size="md"
+							        class="font-normal" />
+						</div>
+
+						<!-- push Search to the left -->
+						<div class="grow"></div>
+
 						<!-- EXPORT -->
-						<div class="flex-shrink text-right content-center">
+						<div class="shrink text-right content-center">
 							<Button on:click={() => ExportService.export(userProductLists, fetchTimestamp)}>
 								Export
 								<DownloadOutline />
@@ -153,7 +178,7 @@
 		</TableHead>
 
 		<TableBody>
-			{#each userProductLists[selectedList] as row, idx (row)}
+			{#each currentUserProductListFiltered as row, idx (row)}
 				<!-- MAIN ROW -->
 				<!-- `<Table hoverable={true}` makes all rows hoverable - let's cancel it out for rows
 					without reviews using tailwind-merge (which Flowbite provides and documents). This way
@@ -162,7 +187,7 @@
 				              class={[!row.userProductInfo.reviewed && 'hover:bg- dark:hover:bg-']}
 				              title={row.userProductInfo.reviewed ? 'Click the row to see the review': null}>
 					{#each columns[selectedList] as col (col)}
-						<!-- max-w and overflow are for the Name ofc -->
+						<!-- max-w and overflow are for the Title ofc -->
 						<TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
 							{@const cellValue = getCellValue(row, col)}
 							{#if col === Cols.HasMovieReview}

@@ -6,7 +6,7 @@ import type {
 	UserProductLists
 } from './MustAppService';
 import _ from 'lodash';
-import { checkState } from '$lib';
+import { checkState } from '$lib/Checks';
 
 export class ExportService {
 	public static export(userProductLists: UserProductLists, dataFetchTimestamp: Date) {
@@ -70,19 +70,19 @@ export class ExportService {
 
 		// column widths
 
-		// could've just set a fixed one for the Name also, but eh, let's be flexible a bit
-		const minNameWidth = 30;
-		const maxNameWidth = 80;
-		const nameWidth = Math.min(
-			maxNameWidth,
-			rows.reduce((w, row) => Math.max(w, (row[Cols.Name] as string).length), minNameWidth)
+		// could've just set a fixed one for the Title also, but eh, let's be flexible a bit
+		const minTitleWidth = 30;
+		const maxTitleWidth = 80;
+		const titleWidth = Math.min(
+			maxTitleWidth,
+			rows.reduce((w, row) => Math.max(w, (row[Cols.Title] as string).length), minTitleWidth)
 		);
 
 		// 10 is enough for all data, but 11 also fits the "Release date" header
 		const otherWidth = 11;
 
 		sheet['!cols'] = listColumns.map((col) => {
-			return { wch: col === Cols.Name ? nameWidth : otherWidth };
+			return { wch: col === Cols.Title ? titleWidth : otherWidth };
 		});
 
 		return sheet;
@@ -101,7 +101,7 @@ function toFileDateTimeString(dt: Date) {
 // different enough that trying to extract common parts is not worth it
 
 const Cols = {
-	Name: 'Name',
+	Title: 'Title',
 	ReleasedDate: 'Release date',
 	ModifiedAt: 'Modified',
 	MovieRating: 'Rating',
@@ -115,9 +115,9 @@ const Cols = {
 type ColNames = (typeof Cols)[keyof typeof Cols];
 
 const columns: { [listKey in UserProductListKey]: ColNames[] } = {
-	want: [Cols.Name, Cols.ReleasedDate],
+	want: [Cols.Title, Cols.ReleasedDate],
 	shows: [
-		Cols.Name,
+		Cols.Title,
 		Cols.ReleasedDate,
 		Cols.ModifiedAt,
 		Cols.EpisodesWatched,
@@ -125,7 +125,7 @@ const columns: { [listKey in UserProductListKey]: ColNames[] } = {
 		Cols.EpisodesTotal
 	],
 	watched: [
-		Cols.Name,
+		Cols.Title,
 		Cols.ReleasedDate,
 		Cols.ModifiedAt,
 		Cols.MovieRating,
@@ -139,7 +139,7 @@ const getCellValue = (
 	col: ColNames
 ): string | number | boolean | Date | null | undefined => {
 	switch (col) {
-		case Cols.Name:
+		case Cols.Title:
 			return row.product.title;
 		case Cols.ReleasedDate:
 			return row.product.releaseDate;

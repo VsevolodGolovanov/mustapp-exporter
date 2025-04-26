@@ -7,8 +7,8 @@ import {
 } from './(services)/MustAppService';
 import { Fetch } from '$lib/CurrentContext.svelte';
 import { MustAppClientCacheService } from './(services)/MustAppClientCacheService';
-import { checkNonNullable } from '$lib';
 import _ from 'lodash';
+import { checkNonNullable } from '$lib/Checks';
 
 export async function load({ fetch, url, params: { username } }) {
 	console.log('Loading data for user:', username);
@@ -80,10 +80,10 @@ export async function load({ fetch, url, params: { username } }) {
 		});
 	}
 
-	const lists: ListDescriptor[] = Object.entries(profile.lists).map(([name, list]) => {
+	const lists: ListDescriptor[] = Object.entries(profile.lists).map(([key, list]) => {
 		return {
-			key: name as UserProductListKey,
-			name: _.startCase(name),
+			key: key as UserProductListKey,
+			name: _.startCase(key),
 			entryCount: list.length
 		};
 	});
