@@ -37,7 +37,7 @@
 	type ColNames = typeof Cols[keyof typeof Cols];
 
 	const columns: { [listKey in UserProductListKey]: ColNames[] } = {
-		want: [Cols.Title, Cols.ReleaseDate],
+		want: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt],
 		shows: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
 		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
 	};
