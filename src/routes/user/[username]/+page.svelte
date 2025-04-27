@@ -1,7 +1,12 @@
 <script lang="ts">
 	import { Button, Card, P } from 'flowbite-svelte';
 	import type { LayoutSnippets } from '../../+layout.svelte';
-	import { ArrowUpRightFromSquareOutline, RefreshOutline, UserSolid } from 'flowbite-svelte-icons';
+	import {
+		ArrowUpRightFromSquareOutline,
+		ExclamationCircleOutline,
+		RefreshOutline,
+		UserSolid
+	} from 'flowbite-svelte-icons';
 	import { type ListKey, listKeys } from './(services)/MustAppService';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
@@ -16,9 +21,9 @@
 	// import ArrowUpRightFromSquareOutline from 'flowbite-svelte-icons/ArrowUpRightFromSquareOutline.svelte';
 	// it works, but IDEA removes the import as "unused" :\
 
-	// #######################################################
-	// ### This page file handles loading of Must userdata ###
-	// #######################################################
+	// ##############################################################################
+	// ### This page file handles loading of Must userdata & ties things together ###
+	// ##############################################################################
 
 	console.log('Running page script');
 
@@ -76,13 +81,17 @@
 		{@render userdata(true)}
 		<!-- TODO report issue: avoiding intentionally unused variable warning-->
 		<!--eslint-disable-next-line-->
-	{:then fetchedUserdata}
+	{:then dontNeedThisHere}
 		{@render userdata(loading)}
 	{/await}
 {/snippet}
 
 {#snippet userdata(loadingArg: booleanType)}
 	Last data fetch: {data.fetchTimestamp.toLocaleString()}
+	{#if (Date.now() - data.fetchTimestamp.getTime()) > 7 * 24 * 60 * 60 * 1000 /*1 week*/}
+		<ExclamationCircleOutline class="ml-1 text-yellow-500 dark:text-yellow-300"
+		                          title={{id:"?", title:'The data is more than a week old'}} />
+	{/if}
 	<!-- Flowbite disables inputs with opacity, so let's do the same:
 		https://flowbite-svelte.com/docs/components/forms#Disabled -->
 	<Button type="button" class={['ml-2 disabled:opacity-50']} disabled={loadingArg}
