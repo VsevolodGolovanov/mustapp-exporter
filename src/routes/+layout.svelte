@@ -26,7 +26,7 @@
 				MustApp Exporter
 			</NavBrand>
 
-			<div class="flex-1 text-center">
+			<div class="flex-1 flex place-content-center place-items-center">
 				{@render snippets.layoutHeaderCenter?.()}
 			</div>
 

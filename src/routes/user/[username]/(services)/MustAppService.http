@@ -1,6 +1,10 @@
-// XXX sanitize ids before commiting!
+// XXX sanitize parameters before commiting!
+@username=
 @userId=
 @productId=
+
+### Get profile
+GET https://mustapp.com/api/users/uri/{{username}}
 
 ### Get product info
 POST https://mustapp.com/api/products

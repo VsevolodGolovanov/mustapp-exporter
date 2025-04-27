@@ -50,11 +50,10 @@ export class MustAppService {
 	 * @param profile
 	 */
 	public static getUserProductLists(profile: Profile) {
-		// here and everywhere else I'm going off keys(lists) in case I decide to uncomment `youtube` in
-		// the `profileSchema` below
-		const accumulator = _.transform(
-			profile.lists,
-			(accumulator, value, listKey) => {
+		const accumulator = _.reduce(
+			listKeys,
+			(accumulator, listKey) => {
+				const value = profile.lists[listKey];
 				console.log(`Scheduling ${listKey} list batch fetch`);
 
 				// chaining the list fetches via `previousBatch` because I want to load them strictly
@@ -72,10 +71,11 @@ export class MustAppService {
 				if (listBatched.length > 0) {
 					accumulator.previousBatch = listBatched.at(-1)!;
 				}
+				return accumulator;
 			},
 			{ result: {}, previousBatch: Promise.resolve<unknown>(null) }
 		);
-		return accumulator.result as Record<UserProductListKey, Promise<UserProductList>[]>;
+		return accumulator.result as Record<ListKey, Promise<UserProductList>[]>;
 	}
 
 	private static getUserProductListBatched(
@@ -134,12 +134,30 @@ export class MustAppService {
 
 const userProductIdListSchema = array(number().required()).required();
 
+// this is the source of truth, establishing the lists we're interested in; also defines order in UI etc (same as at
+// must.com and in the Must app)
+export const listKeys = ['want', 'watched', 'shows'] as const;
+
+export type ListKeysTuple = typeof listKeys;
+export type ListKey = ListKeysTuple[number];
+
+export type ListKeyedObject<VALUE> = {
+	[listKey in ListKey]: VALUE;
+};
+
+// same names as at must.com and in the Must app
+export const listNames: ListKeyedObject<string> = {
+	want: 'Want',
+	watched: 'Watched',
+	shows: 'Series'
+};
+
 const profileSchema = object({
 	id: number().required(),
-	lists: object({
+	lists: object<object, ListKeyedObject<typeof userProductIdListSchema>>({
 		want: userProductIdListSchema,
-		shows: userProductIdListSchema,
-		watched: userProductIdListSchema
+		watched: userProductIdListSchema,
+		shows: userProductIdListSchema
 		// youtube: userProductIdListSchema
 	}).required()
 	// skip other stuff
@@ -196,6 +214,4 @@ const userProductListSchema = array(userProductListEntrySchema).required().json(
 
 export type UserProductList = InferType<typeof userProductListSchema>;
 
-export type UserProductListKey = keyof Profile['lists'];
-
-export type UserProductLists = Record<UserProductListKey, UserProductList>;
+export type UserProductLists = Record<ListKey, UserProductList>;

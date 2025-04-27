@@ -1,8 +1,10 @@
 import {
+	type ListKey,
+	type ListKeyedObject,
+	listKeys,
 	MustAppService,
 	type Profile,
 	type UserProductList,
-	type UserProductListKey,
 	type UserProductLists
 } from './(services)/MustAppService';
 import { Fetch } from '$lib/CurrentContext.svelte';
@@ -13,7 +15,7 @@ import { checkNonNullable } from '$lib/Checks';
 export async function load({ fetch, url, params: { username } }) {
 	console.log('Loading data for user:', username);
 
-	let profile: Profile;
+	let profile: Promise<Profile>;
 	let fetchTimestamp: Date;
 	let userProductLists: Promise<UserProductLists>;
 
@@ -25,12 +27,12 @@ export async function load({ fetch, url, params: { username } }) {
 		cacheData = await cacheService.getData(username);
 	}
 
-	let loadingUserProductLists: Record<UserProductListKey, Promise<UserProductList>[]> | null = null;
+	let loadingUserProductLists: Record<ListKey, Promise<UserProductList>[]> | null = null;
 	if (cacheData) {
 		console.log('Found cached data');
 
 		fetchTimestamp = cacheData.fetchTimestamp;
-		profile = cacheData.profile;
+		profile = Promise.resolve(cacheData.profile);
 		userProductLists = Promise.resolve(cacheData.userProductLists);
 	} else {
 		console.log('No cached data - fetching');
@@ -40,66 +42,81 @@ export async function load({ fetch, url, params: { username } }) {
 
 		// separately getting profile and lists here to provide detailed UI feedback
 
-		profile = await MustAppService.getProfile(username);
-		const lists = profile.lists;
-		console.log(
-			`Loaded profile: id=${profile.id}, want ${lists.want.length}, ` +
-				`shows ${lists.shows.length}, watched ${lists.watched.length}`
-		);
+		profile = MustAppService.getProfile(username);
 
-		loadingUserProductLists = MustAppService.getUserProductLists(profile);
-		// Still need to provide a single Promise resolving to completely resolved de-batched data as
-		// well - at the minimum to support a singular data API with caching above; at the maximum
-		// because the UI code would have to do something like that anyway. But does that mean that we
-		// send the same data twice to the client? Maybe I should do:
-		// `loadingUserProductLists.values.map(batch => batch.length)` - that would be enough to
-		// track loading progress.
-		const allPromises = Object.values(loadingUserProductLists).flat(1);
-		userProductLists = Promise.all(allPromises).then(async () => {
-			console.log('Assembling loaded userProductLists batches');
-			// can't use _.mapValues here, because I need to `await` the batches (ye, this really calls
-			// for a Promise-specific library...)
+		profile.then((fetchedProfile) => {
+			const lists = fetchedProfile.lists;
+			console.log(
+				`Loaded profile: id=${fetchedProfile.id}, `,
+				listKeys.map((lk) => `${lk} ${lists[lk].length}`)
+			);
 
-			let resultLists = {};
-			checkNonNullable(loadingUserProductLists);
-			for (const listKey of Object.keys(loadingUserProductLists) as UserProductListKey[]) {
-				const list: UserProductList = (await Promise.all(loadingUserProductLists[listKey])).flat(1);
-				resultLists = {
-					...resultLists,
-					[listKey]: list
-				};
-			}
-			return resultLists as UserProductLists;
-		});
+			loadingUserProductLists = MustAppService.getUserProductLists(fetchedProfile);
+			// Still need to provide a single Promise resolving to completely resolved de-batched data as
+			// well - at the minimum to support a singular data API with caching above; at the maximum
+			// because the UI code would have to do something like that anyway. But does that mean that we
+			// send the same data twice to the client? Maybe I should do:
+			// `loadingUserProductLists.values.map(batch => batch.length)` - that would be enough to
+			// track loading progress.
+			const allPromises = Object.values(loadingUserProductLists).flat(1);
+			userProductLists = Promise.all(allPromises).then(async () => {
+				console.log('Assembling loaded userProductLists batches');
+				// can't use _.mapValues here, because I need to `await` the batches (ye, this really calls
+				// for a Promise-specific library...)
 
-		userProductLists.then((upLists) => {
-			console.log('Fetched lists');
-			cacheService
-				.setData({ username, fetchTimestamp, profile, userProductLists: upLists })
-				.then(() => console.log('userProductLists cached'));
+				let resultLists = {};
+				checkNonNullable(loadingUserProductLists);
+				for (const listKey of Object.keys(loadingUserProductLists) as ListKey[]) {
+					const list: UserProductList = (await Promise.all(loadingUserProductLists[listKey])).flat(
+						1
+					);
+					resultLists = {
+						...resultLists,
+						[listKey]: list
+					};
+				}
+				return resultLists as UserProductLists;
+			});
+
+			userProductLists.then((fetchedUserProductLists) => {
+				console.log('Fetched user product lists');
+				cacheService
+					.setData({
+						username,
+						fetchTimestamp,
+						profile: fetchedProfile,
+						userProductLists: fetchedUserProductLists
+					})
+					.then(() => console.log('User data cached'));
+			});
 		});
 	}
 
-	const lists: ListDescriptor[] = Object.entries(profile.lists).map(([key, list]) => {
+	const userdata: Promise<Userdata> = profile.then((fetchedProfile) => {
+		const listCounts = _.fromPairs(
+			Object.entries(fetchedProfile.lists).map(([key, list]) => {
+				return [key, list.length];
+			})
+		) as ListKeyedObject<number>;
+
 		return {
-			key: key as UserProductListKey,
-			name: _.startCase(key),
-			entryCount: list.length
+			listCounts,
+			// wow, typescript is smart enough to understand that this `profile.then` is going to be executed after
+			// `profile.then` above, and so `userProductLists` is guaranteed to be initialized? pretty cool
+			userProductLists,
+			loadingUserProductLists
 		};
 	});
 
 	return {
 		username,
 		fetchTimestamp,
-		userId: profile.id,
-		lists,
-		userProductLists,
-		loadingUserProductLists
+		userdata
 	};
 }
 
-export type ListDescriptor = {
-	key: UserProductListKey;
-	name: string;
-	entryCount: number;
+export type Userdata = {
+	listCounts: ListKeyedObject<number>;
+	userProductLists: Promise<UserProductLists>;
+	loadingUserProductLists: ListKeyedObject<Promise<UserProductList>[]> | null;
 };

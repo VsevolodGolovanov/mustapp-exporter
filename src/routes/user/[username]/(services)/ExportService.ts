@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx/xlsx.mjs';
 import type {
 	UserProductList,
 	UserProductListEntry,
-	UserProductListKey,
+	ListKey,
 	UserProductLists
 } from './MustAppService';
 import _ from 'lodash';
@@ -21,7 +21,7 @@ export class ExportService {
 
 		// each Must list goes into a separate sheet
 		for (const [listKey, list] of Object.entries(userProductLists)) {
-			const listSheet = this.createListSheet(listKey as UserProductListKey, list);
+			const listSheet = this.createListSheet(listKey as ListKey, list);
 			XLSX.utils.book_append_sheet(workbook, listSheet, _.startCase(listKey));
 		}
 
@@ -58,7 +58,7 @@ export class ExportService {
 		return sheet;
 	}
 
-	private static createListSheet(listKey: UserProductListKey, list: UserProductList) {
+	private static createListSheet(listKey: ListKey, list: UserProductList) {
 		const listColumns = columns[listKey];
 
 		// map data
@@ -114,7 +114,7 @@ const Cols = {
 
 type ColNames = (typeof Cols)[keyof typeof Cols];
 
-const columns: { [listKey in UserProductListKey]: ColNames[] } = {
+const columns: { [listKey in ListKey]: ColNames[] } = {
 	want: [Cols.Title, Cols.ReleasedDate, Cols.ModifiedAt],
 	shows: [
 		Cols.Title,

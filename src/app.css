@@ -20,3 +20,8 @@
 }
 
 @source "../node_modules/flowbite-svelte/dist";
+
+/** fix invisible hover of Tabs' buttons in table header in light mode */
+html:not(.dark) thead .tabs > li > button:not(.active):hover {
+	background-color: var(--color-gray-200);
+}

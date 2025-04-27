@@ -1,6 +1,11 @@
 <script lang="ts">
-	import type { UserProductListEntry, UserProductListKey, UserProductLists } from '../(services)/MustAppService';
-	import type { ListDescriptor } from '../+page';
+	import {
+		type ListKey,
+		listKeys,
+		listNames,
+		type UserProductListEntry,
+		type UserProductLists
+	} from '../(services)/MustAppService';
 	import {
 		Button,
 		Rating,
@@ -36,7 +41,7 @@
 
 	type ColNames = typeof Cols[keyof typeof Cols];
 
-	const columns: { [listKey in UserProductListKey]: ColNames[] } = {
+	const columns: { [listKey in ListKey]: ColNames[] } = {
 		want: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt],
 		shows: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
 		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
@@ -107,14 +112,13 @@
 		}
 	};
 
-	const { fetchTimestamp, lists, userProductLists }: {
+	const { fetchTimestamp, userProductLists }: {
 		fetchTimestamp: Date,
-		lists: ListDescriptor[],
 		userProductLists: UserProductLists
 	} = $props();
 
-	let selectedList = $state<UserProductListKey>(lists[0].key);
-	const selectList = (list: UserProductListKey) => {
+	let selectedList = $state<ListKey>(listKeys[0]);
+	const selectList = (list: ListKey) => {
 		selectedList = list;
 		expandedRow = null;
 	};
@@ -186,10 +190,11 @@
 						<!-- LIST SELECTOR -->
 						<!-- I use Tabs without content as the input here, because I prefer them to radio
 							buttons in this case visually -->
-						<Tabs tabStyle="pill" contentClass="hidden" class="flex-none ">
-							{#each lists as list (list.key)}
-								<TabItem open={selectedList === list.key} title={`${list.name} (${list.entryCount})`}
-								         on:click={() => selectList(list.key)} class="*:hover:bg-gray-200" />
+						<Tabs tabStyle="pill" contentClass="hidden" class="tabs flex-none">
+							{#each listKeys as listKey (listKey)}
+								<TabItem open={selectedList === listKey}
+								         title={`${listNames[listKey]} (${userProductLists[listKey].length})`}
+								         on:click={() => selectList(listKey)} />
 							{/each}
 						</Tabs>
 
