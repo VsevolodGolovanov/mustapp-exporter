@@ -99,8 +99,8 @@ export class MustAppService {
 			});
 			batches.push(batch);
 			previousBatch = batch;
-			const scheduledEntries = Math.min(batches.length * batchSize, ids.length);
-			console.log(`Scheduled batch fetch of ${scheduledEntries}/${ids.length} entries`);
+			// const scheduledEntries = Math.min(batches.length * batchSize, ids.length);
+			// console.log(`Scheduled batch fetch of ${scheduledEntries}/${ids.length} entries`);
 		}
 
 		return batches;
@@ -132,7 +132,9 @@ export class MustAppService {
 	}
 }
 
-const userProductIdListSchema = array(number().required()).required();
+const userProductIdListSchema = array(number().required())
+	.default(() => [])
+	.required();
 
 // this is the source of truth, establishing the lists we're interested in; also defines order in UI etc (same as at
 // must.com and in the Must app)
@@ -159,11 +161,13 @@ const profileSchema = object({
 		watched: userProductIdListSchema,
 		shows: userProductIdListSchema
 		// youtube: userProductIdListSchema
-	}).required()
+	}),
+	isPrivate: boolean().required()
 	// skip other stuff
 })
 	.required()
-	.json();
+	.json()
+	.camelCase();
 
 export type Profile = InferType<typeof profileSchema>;
 

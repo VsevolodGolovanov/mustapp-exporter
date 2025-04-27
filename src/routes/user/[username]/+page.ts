@@ -47,8 +47,8 @@ export async function load({ fetch, url, params: { username } }) {
 		profile.then((fetchedProfile) => {
 			const lists = fetchedProfile.lists;
 			console.log(
-				`Loaded profile: id=${fetchedProfile.id}, `,
-				listKeys.map((lk) => `${lk} ${lists[lk].length}`)
+				`Loaded profile: id=${fetchedProfile.id}, private=${fetchedProfile.isPrivate}. Lists:`,
+				listKeys.map((lk) => `${lk} ${lists[lk].length}`).join(', ')
 			);
 
 			loadingUserProductLists = MustAppService.getUserProductLists(fetchedProfile);
@@ -100,6 +100,7 @@ export async function load({ fetch, url, params: { username } }) {
 		) as ListKeyedObject<number>;
 
 		return {
+			profilePrivate: fetchedProfile.isPrivate,
 			listCounts,
 			// wow, typescript is smart enough to understand that this `profile.then` is going to be executed after
 			// `profile.then` above, and so `userProductLists` is guaranteed to be initialized? pretty cool
@@ -116,6 +117,7 @@ export async function load({ fetch, url, params: { username } }) {
 }
 
 export type Userdata = {
+	profilePrivate: boolean;
 	listCounts: ListKeyedObject<number>;
 	userProductLists: Promise<UserProductLists>;
 	loadingUserProductLists: ListKeyedObject<Promise<UserProductList>[]> | null;

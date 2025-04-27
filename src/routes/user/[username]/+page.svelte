@@ -109,12 +109,16 @@
 			<UserProductListsLoadingProgress listCounts={fetchedUserdata.listCounts}
 			                                 loadingUserProductListsState={loadingUserProductListsState} />
 		{:then userProductLists}
-			<UserProductListsTable fetchTimestamp={data.fetchTimestamp} userProductLists={userProductLists} />
+			{#if fetchedUserdata.profilePrivate}
+				<P>Failed to fetch data - the profile is private.</P>
+			{:else}
+				<UserProductListsTable fetchTimestamp={data.fetchTimestamp} userProductLists={userProductLists} />
+			{/if}
 		{/await}
 	{:catch err}
 		<!-- handles "user not found" error from MustAppService#getProfile -->
 		<P>
-			{err.body.message}
+			{err.body?.message ?? `Unexpected error: ${err}`}
 		</P>
 	{/await}
 </Card>
