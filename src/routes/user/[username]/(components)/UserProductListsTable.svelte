@@ -26,6 +26,7 @@
 	import { checkState } from '$lib/Checks';
 	import { isBlank } from '$lib/Strings';
 	import _ from 'lodash';
+	import { slide } from 'svelte/transition';
 
 	console.log('Initializing UserProductListsTable');
 
@@ -272,7 +273,7 @@
 					<!-- not hoverable (for details see main row above) -->
 					<TableBodyRow class="hover:bg- dark:hover:bg-">
 						<TableBodyCell colspan={columns[selectedList].length}>
-							<div class="flex gap-2">
+							<div class="flex gap-2" transition:slide|global>
 								<div class="flex-none">
 									<hr class="w-px h-full border-0 border-l border-gray-200 dark:border-gray-700" />
 								</div>
