@@ -225,7 +225,7 @@
 					<!-- cancel th padding, add on button instead, so the whole visual header is clickable -->
 					<TableHeadCell class="!p-0">
 						<!-- borrowed from TableHeadCell.svelte-->
-						<button class={['w-full text-left after:absolute after:pl-3 px-6 py-3',
+						<button class={['w-full text-left after:absolute after:pl-2 px-6 py-3',
 											'hover:bg-gray-200 dark:hover:bg-slate-600',
 											sortColumn === col && `after:content-["${sortDirection ? '▲': '▼'}"]`]}
 						        onclick={() => sort(col)}>
