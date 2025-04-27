@@ -122,7 +122,6 @@
 	let selectedList = $state<ListKey>(listKeys[0]);
 	const selectList = (list: ListKey) => {
 		selectedList = list;
-		expandedRow = null;
 	};
 
 	// `<Table filter` and `TableSearch` force their weird markup and aren't debounced, so I'm gonna
@@ -167,9 +166,10 @@
 		}
 	});
 
-	let expandedRow = $state<number | null>(null);
-	const toggleRow = (row: UserProductListEntry, idx: number) => {
-		expandedRow = expandedRow === idx ? null : (row.userProductInfo.reviewed ? idx : null);
+	// raw, because don't need deep reactivity here, and it prevents using rows for identity
+	let expandedRow = $state.raw<object | null>(null);
+	const toggleRow = (row: UserProductListEntry) => {
+		expandedRow = expandedRow === row ? null : (row.userProductInfo.reviewed ? row : null);
 	};
 
 	// casting helper, because casting in-place in markup currently leads to annoying parser errors:
@@ -237,12 +237,12 @@
 		</TableHead>
 
 		<TableBody>
-			{#each currentUserProductListFilteredSorted as row, idx (row)}
+			{#each currentUserProductListFilteredSorted as row (row)}
 				<!-- MAIN ROW -->
 				<!-- `<Table hoverable={true}` makes all rows hoverable - let's cancel it out for rows
 					without reviews using tailwind-merge (which Flowbite provides and documents). This way
 					we don't have to hardcode any background colors, which is nice. -->
-				<TableBodyRow on:click={() => toggleRow(row, idx)}
+				<TableBodyRow on:click={() => toggleRow(row)}
 				              class={[!row.userProductInfo.reviewed && 'hover:bg- dark:hover:bg-']}
 				              title={row.userProductInfo.reviewed ? 'Click the row to see the review': null}>
 					{#each columns[selectedList] as col (col)}
@@ -269,7 +269,7 @@
 				</TableBodyRow>
 
 				<!-- EXPANDED ROW (REVIEW) -->
-				{#if expandedRow === idx}
+				{#if expandedRow === row}
 					<!-- not hoverable (for details see main row above) -->
 					<TableBodyRow class="hover:bg- dark:hover:bg-">
 						<TableBodyCell colspan={columns[selectedList].length}>
