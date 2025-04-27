@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button, Card } from 'flowbite-svelte';
+	import { Button, Card, P } from 'flowbite-svelte';
 	import type { LayoutSnippets } from '../../+layout.svelte';
 	import { ArrowUpRightFromSquareOutline, RefreshOutline, UserSolid } from 'flowbite-svelte-icons';
 	import { type ListKey, listKeys } from './(services)/MustAppService';
@@ -111,5 +111,10 @@
 		{:then userProductLists}
 			<UserProductListsTable fetchTimestamp={data.fetchTimestamp} userProductLists={userProductLists} />
 		{/await}
+	{:catch err}
+		<!-- handles "user not found" error from MustAppService#getProfile -->
+		<P>
+			{err.body.message}
+		</P>
 	{/await}
 </Card>

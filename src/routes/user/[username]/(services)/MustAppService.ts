@@ -20,10 +20,10 @@ export class MustAppService {
 		);
 
 		if (!response.ok) {
+			const responseBody = await response.json();
 			error(
 				response.status,
-				`${response.status === 404 ? 'Invalid username?' : ''}\
-					Failed to fetch ${response.url}: ${response.statusText}`
+				`Failed to fetch Must user data: ${_.lowerFirst(responseBody?.error?.message)}`
 			);
 		}
 

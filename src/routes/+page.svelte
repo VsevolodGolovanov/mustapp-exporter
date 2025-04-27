@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { Button, Card, Input, Label } from 'flowbite-svelte';
+	import { Button, Card, Input, Label, P } from 'flowbite-svelte';
 	import type { PageProps } from './$types';
 
 	const { form }: PageProps = $props();
@@ -17,7 +17,7 @@
 			</Label>
 
 			{#if form?.error}
-				<p class="text-red-500">{form.error}</p>
+				<P class="text-red-500 dark:text-red-500">{form.error}</P>
 			{/if}
 			<Button type="submit">Get Must data</Button>
 		</form>

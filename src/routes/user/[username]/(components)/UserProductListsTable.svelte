@@ -8,6 +8,7 @@
 	} from '../(services)/MustAppService';
 	import {
 		Button,
+		P,
 		Rating,
 		Search,
 		TabItem,
@@ -278,7 +279,7 @@
 								<div class="flex-1">
 									<h4 class="mb-1 font-semibold text-gray-700 dark:text-gray-400">Reviewed
 										at {row.userProductInfo.review?.reviewedAt?.toLocaleString()}:</h4>
-									<p class="text-wrap">{row.userProductInfo.review?.body}</p>
+									<P>{row.userProductInfo.review?.body}</P>
 								</div>
 							</div>
 						</TableBodyCell>
