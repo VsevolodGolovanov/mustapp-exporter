@@ -77,13 +77,18 @@
 		<UserSolid />{data.username}
 		<ArrowUpRightFromSquareOutline class="ml-1" />
 	</a>
-	{#await data.userdata.then(async () => await loadingUserProductListsDelayed)}
-		{@render userdata(true)}
-		<!-- TODO report issue: avoiding intentionally unused variable warning-->
-		<!--eslint-disable-next-line-->
-	{:then dontNeedThisHere}
-		{@render userdata(loading)}
-	{/await}
+	<!-- this `if` is a workaround for when navigating back from this page to the "login" page - this
+		snippet gets rendered in the context of the super-route's data, just need to prevent throwing an
+		error -->
+	{#if data.userdata}
+		{#await data.userdata.then(async () => await loadingUserProductListsDelayed)}
+			{@render userdata(true)}
+			<!-- TODO report issue: avoiding intentionally unused variable warning-->
+			<!--eslint-disable-next-line-->
+		{:then dontNeedThisHere}
+			{@render userdata(loading)}
+		{/await}
+	{/if}
 {/snippet}
 
 {#snippet userdata(loadingArg: booleanType)}

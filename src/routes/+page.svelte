@@ -2,8 +2,14 @@
 	import { enhance } from '$app/forms';
 	import { Button, Card, Input, Label, P } from 'flowbite-svelte';
 	import type { PageProps } from './$types';
+	import { setSnippets } from '$lib/layout-snippets.svelte';
+	import type { LayoutSnippets } from './+layout.svelte';
 
 	const { form }: PageProps = $props();
+
+	// need to reset the snippets workaround when navigating from subroute back here, otherwise
+	// subroute's snippets linger and render
+	setSnippets<LayoutSnippets>({ layoutHeaderCenter: undefined });
 </script>
 
 <Card class="m-auto">

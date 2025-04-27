@@ -1,5 +1,7 @@
 import { getContext, setContext } from 'svelte';
 
+// this is a workaround for https://github.com/sveltejs/kit/issues/12928
+
 const key = Symbol('layout-snippets');
 
 export function initSnippets<Snippets>(): Snippets {
