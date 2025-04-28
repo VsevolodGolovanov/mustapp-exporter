@@ -17,7 +17,8 @@
 		<P class="m-4">
 			<!-- TODO why blue text by default in light mode-->
 			<Progressbar progress={Math.round(100 * loadingUserProductListsState[listKey] / listCounts[listKey])}
-			             labelOutside={`${listNames[listKey]} (${listCounts[listKey]})`} size="h-4" animate />
+			             labelOutside={`${listNames[listKey]} (${listCounts[listKey]})`} size="h-4" animate
+			             classLabelOutside="*:text-black" />
 		</P>
 	{/if}
 {/snippet}

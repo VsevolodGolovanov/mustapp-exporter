@@ -124,7 +124,7 @@ export class MustAppService {
 		idBatch: number[],
 		userProducts: UserProductList
 	) {
-		console.log('augmentWatchedShowUserProducts');
+		// console.log('augmentWatchedShowUserProducts');
 
 		await sleep(this.waitMs);
 		// Map of productId -> stats

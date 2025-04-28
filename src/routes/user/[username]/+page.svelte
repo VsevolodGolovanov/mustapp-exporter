@@ -114,7 +114,7 @@
 
 <Card class="min-w-full">
 	{#await data.userdata}
-		<span>
+		<span class="text-black dark:text-white">
 			<RefreshOutline class="inline-block animate-spin" />
 			<span class="ml-2 align-middle">Loading user data...</span>
 		</span>
