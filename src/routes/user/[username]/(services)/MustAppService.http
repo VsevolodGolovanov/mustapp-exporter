@@ -30,10 +30,20 @@ Content-Type: application/json
   "ids": [{{productId}}]
 }
 
-### Get user product info with review & product info
+### Get user product info with review & product info - nice, get everything in 1 request, don't need the 3 before this
 POST https://mustapp.com/api/users/id/{{userId}}/products?embed=product,review
 Content-Type: application/json
 
 {
     "ids": [{{productId}}]
 }
+
+### Get shows watched stats
+POST https://mustapp.com/api/users/id/{{userId}}/shows/watched_stats
+Content-Type: application/json
+
+{
+    "ids": [{{productId}}]
+}
+
+### Shows seasons are accessed as user product infos, just use season ids from watched_stats

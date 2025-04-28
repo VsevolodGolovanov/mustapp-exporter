@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx/xlsx.mjs';
 import type {
+	ListKey,
 	UserProductList,
 	UserProductListEntry,
-	ListKey,
 	UserProductLists
 } from './MustAppService';
 import _ from 'lodash';
@@ -68,6 +68,18 @@ export class ExportService {
 
 		const sheet = XLSX.utils.json_to_sheet(rows);
 
+		// add "last season" comments for shows list headers
+		if (listKey === 'shows') {
+			const lastSeasonDataIdxs = [Cols.Rating, Cols.ReviewedAt, Cols.ReviewText].map((c) =>
+				listColumns.indexOf(c)
+			);
+			lastSeasonDataIdxs.forEach((idx) => {
+				const sheetCol = String.fromCharCode('A'.charCodeAt(0) + idx);
+				sheet[`${sheetCol}1`].c = [{ t: 'of last watched season' }];
+				sheet[`${sheetCol}1`].c.hidden = true;
+			});
+		}
+
 		// column widths
 
 		// could've just set a fixed one for the Title also, but eh, let's be flexible a bit
@@ -104,9 +116,9 @@ const Cols = {
 	Title: 'Title',
 	ReleasedDate: 'Release date',
 	ModifiedAt: 'Modified',
-	MovieRating: 'Rating',
-	MovieReviewedAt: 'Reviewed',
-	MovieReviewText: 'Review',
+	Rating: 'Rating',
+	ReviewedAt: 'Reviewed',
+	ReviewText: 'Review',
 	EpisodesWatched: 'Watched',
 	EpisodesReleased: 'Released',
 	EpisodesTotal: 'Total'
@@ -122,15 +134,18 @@ const columns: { [listKey in ListKey]: ColNames[] } = {
 		Cols.ModifiedAt,
 		Cols.EpisodesWatched,
 		Cols.EpisodesReleased,
-		Cols.EpisodesTotal
+		Cols.EpisodesTotal,
+		Cols.Rating,
+		Cols.ReviewedAt,
+		Cols.ReviewText
 	],
 	watched: [
 		Cols.Title,
 		Cols.ReleasedDate,
 		Cols.ModifiedAt,
-		Cols.MovieRating,
-		Cols.MovieReviewedAt,
-		Cols.MovieReviewText
+		Cols.Rating,
+		Cols.ReviewedAt,
+		Cols.ReviewText
 	]
 };
 
@@ -145,11 +160,11 @@ const getCellValue = (
 			return row.product.releaseDate;
 		case Cols.ModifiedAt:
 			return row.userProductInfo.modifiedAt;
-		case Cols.MovieRating:
+		case Cols.Rating:
 			return row.userProductInfo.rate;
-		case Cols.MovieReviewedAt:
+		case Cols.ReviewedAt:
 			return row.userProductInfo.review?.reviewedAt;
-		case Cols.MovieReviewText:
+		case Cols.ReviewText:
 			return row.userProductInfo.review?.body;
 		case Cols.EpisodesWatched:
 			return row.userProductInfo.userShowInfo.episodesWatched;

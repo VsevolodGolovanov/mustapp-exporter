@@ -3,6 +3,7 @@ import { array, boolean, date, type InferType, number, object, string } from 'yu
 import { Fetch } from '$lib/CurrentContext.svelte.js';
 import _ from 'lodash';
 import { sleep } from '$lib';
+import { checkState } from '$lib/Checks';
 
 export class MustAppService {
 	public static async getProfile(username: string) {
@@ -61,7 +62,8 @@ export class MustAppService {
 				const listBatched = this.getUserProductListBatched(
 					accumulator.previousBatch,
 					profile.id,
-					value
+					value,
+					listKey
 				);
 
 				accumulator.result = {
@@ -78,35 +80,98 @@ export class MustAppService {
 		return accumulator.result as Record<ListKey, Promise<UserProductList>[]>;
 	}
 
+	// when scrolling mustapp.com fetches in batches of 30 - let's try to go a bit bigger, but not too
+	// much
+	private static readonly batchSize = 100;
+	// and let's wait between batches a bit to lessen the risk of triggering some DOS protection
+	private static readonly waitMs = 100;
+
 	private static getUserProductListBatched(
 		previousBatch: Promise<unknown>,
 		userId: number,
-		ids: number[]
+		ids: number[],
+		listKey: ListKey
 	) {
-		// when scrolling mustapp.com fetches in batches of 30 - let's try to go a bit bigger, but not
-		// too much
-		const batchSize = 100;
-		// and let's wait between batches a bit to lessen the risk of triggering some DOS protection
-		const waitMs = 100;
-
 		const batches: Promise<UserProductList>[] = [];
-		for (const idBatch of _.chunk(ids, batchSize)) {
+		for (const idBatch of _.chunk(ids, this.batchSize)) {
 			const batch = previousBatch.then(async () => {
 				// better wait before fetching because at first iteration we just fetched Profile, and at
 				// last iteration no need to wait after fetching
-				await sleep(waitMs);
-				return await MustAppService.getUserProductList(userId, idBatch);
+				await sleep(this.waitMs);
+
+				const userProducts = await this.getUserProducts(userId, idBatch);
+
+				// need to request shows last rate and review separately
+				// for implementation simplicity we'll chain these subbatches in with `awaits` and merge the
+				// results into `userProducts` - without exposing them to UI via `batches`
+				if (listKey === 'shows') {
+					await this.augmentWatchedShowUserProducts(userId, idBatch, userProducts);
+				}
+
+				return userProducts;
 			});
 			batches.push(batch);
 			previousBatch = batch;
-			// const scheduledEntries = Math.min(batches.length * batchSize, ids.length);
+			// const scheduledEntries = Math.min(batches.length * this.batchSize, ids.length);
 			// console.log(`Scheduled batch fetch of ${scheduledEntries}/${ids.length} entries`);
 		}
 
 		return batches;
 	}
 
-	private static async getUserProductList(
+	private static async augmentWatchedShowUserProducts(
+		userId: number,
+		idBatch: number[],
+		userProducts: UserProductList
+	) {
+		console.log('augmentWatchedShowUserProducts');
+
+		await sleep(this.waitMs);
+		// Map of productId -> stats
+		const showWatchedStats = new Map(
+			(await this.getShowWatchedStats(userId, idBatch)).map((stats) => [stats.productId, stats])
+		);
+		checkState(userProducts.length === showWatchedStats.size);
+
+		for (const userProduct of userProducts) {
+			const showStats: ShowWatchedStatsEntry = showWatchedStats.get(userProduct.product.id)!;
+
+			// let's just put these things into userProduct - those fields are unused for shows and
+			// fit perfectly
+			userProduct.userProductInfo.rate = showStats.lastSeasonRate;
+			userProduct.userProductInfo.reviewed = showStats.lastSeasonReviewed;
+		}
+
+		// Map of productId -> seasonId
+		const reviewedLastSeasonIds = new Map(
+			showWatchedStats
+				.values()
+				.filter((s) => s.lastSeasonReviewed)
+				.map((s) => {
+					// "last_season_rate" and "last_season_reviewed" actually refer to last _watched_
+					// season - so it's the last in `watchedSeasons`
+					return [s.watchedSeasons.at(-1)!, s.productId];
+				})
+		);
+
+		await sleep(this.waitMs);
+		const seasonUserProducts = await this.getUserProducts(
+			userId,
+			reviewedLastSeasonIds.keys().toArray()
+		);
+
+		checkState(reviewedLastSeasonIds.size === seasonUserProducts.length);
+		for (const seasonUserProduct of seasonUserProducts) {
+			const productId = reviewedLastSeasonIds.get(seasonUserProduct.product.id);
+
+			// again, let's just put the review into userProduct
+			const userProduct = userProducts.find((up) => up.product.id === productId)!;
+			// and clone just to be safe
+			userProduct.userProductInfo.review = _.cloneDeep(seasonUserProduct.userProductInfo.review);
+		}
+	}
+
+	private static async getUserProducts(
 		userId: number,
 		productIds: number[]
 	): Promise<UserProductList> {
@@ -129,6 +194,30 @@ export class MustAppService {
 
 		const responseText = await response.text();
 		return userProductListSchema.cast(responseText, { stripUnknown: true });
+	}
+
+	private static async getShowWatchedStats(
+		userId: number,
+		productIds: number[]
+	): Promise<ShowWatchedStatsList> {
+		const response = await Fetch.get()(
+			`https://mustapp.com/api/users/id/${userId}/shows/watched_stats`,
+			{
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({ ids: productIds }),
+				cache: 'reload'
+			}
+		);
+
+		if (!response.ok) {
+			error(response.status, `Failed to fetch ${response.url}: ${response.statusText}`);
+		}
+
+		const responseText = await response.text();
+		return showWatchedStatsListSchema.cast(responseText, { stripUnknown: true });
 	}
 }
 
@@ -181,14 +270,15 @@ const userProductListEntrySchema = object({
 		}).camelCase(),
 		// "user_id": <id>,
 		// "product_id": <id>,
-		// "status": "watched",
+		// status: string().oneOf(['watched', 'want']).required(),
 		// "discussion_id": <id>,
-		rate: number().nullable(),
+		rate: number().defined().nullable(),
 		reviewed: boolean().required(),
 		review: object({
 			reviewedAt: date(), //"2020-01-01T00:00:00.000000Z"
 			body: string()
 		})
+			.defined()
 			.nullable()
 			.camelCase()
 		// "is_disliked": false,
@@ -197,14 +287,14 @@ const userProductListEntrySchema = object({
 		.required()
 		.camelCase(),
 	product: object({
-		// "id": <id>,
-		// "type": "movie",
+		id: number().required(),
+		// type: string().oneOf(['movie', 'show']).required(),
 		title: string().required(),
-		releaseDate: date().nullable(), //"2015-01-01"
+		releaseDate: date().defined().nullable(), //"2015-01-01"
 		// "poster_file_path": "/<...>.jpg"
 		// "trailer_url": "https://www.youtube.com/watch?v=<...>"
-		itemsCount: number().nullable(), // = released + unreleased
-		itemsReleasedCount: number().nullable()
+		itemsCount: number().defined().nullable(), // = released + unreleased
+		itemsReleasedCount: number().defined().nullable()
 		// "subtitle": null,
 		// "runtime": 1000
 	})
@@ -219,3 +309,19 @@ const userProductListSchema = array(userProductListEntrySchema).required().json(
 export type UserProductList = InferType<typeof userProductListSchema>;
 
 export type UserProductLists = Record<ListKey, UserProductList>;
+
+const showWatchedStatsEntrySchema = object({
+	productId: number().required(),
+	lastSeasonRate: number().defined().nullable(),
+	lastSeasonReviewed: boolean().required(),
+	// "has_more_reviews": false,
+	watchedSeasons: array(number().required()).required()
+})
+	.required()
+	.camelCase();
+
+type ShowWatchedStatsEntry = InferType<typeof showWatchedStatsEntrySchema>;
+
+const showWatchedStatsListSchema = array(showWatchedStatsEntrySchema).required().json();
+
+type ShowWatchedStatsList = InferType<typeof showWatchedStatsListSchema>;

@@ -39,7 +39,8 @@
 	</header>
 
 	<main class="flex-1 min-h-0">
-		<div class="mx-auto max-w-7xl lg:px-20 px-8 md:px-auto py-8">
+		<!-- max-width to fit the widest table (Series) with an overflowing title -->
+		<div class="mx-auto max-w-[88rem] lg:px-20 px-8 md:px-auto py-8">
 			{@render children()}
 		</div>
 	</main>

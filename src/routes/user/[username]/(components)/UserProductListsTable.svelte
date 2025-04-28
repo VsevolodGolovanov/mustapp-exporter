@@ -36,8 +36,8 @@
 		Title: 'Title',
 		ReleaseDate: 'Release date',
 		ModifiedAt: 'Modified',
-		MovieRating: 'Rating',
-		HasMovieReview: 'Review',
+		Rating: 'Rating',
+		HasReview: 'Review',
 		Episodes: 'Watched/Released(/Total)'
 	} as const;
 
@@ -45,8 +45,8 @@
 
 	const columns: { [listKey in ListKey]: ColNames[] } = {
 		want: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt],
-		shows: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes],
-		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.MovieRating, Cols.HasMovieReview]
+		shows: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Episodes, Cols.Rating, Cols.HasReview],
+		watched: [Cols.Title, Cols.ReleaseDate, Cols.ModifiedAt, Cols.Rating, Cols.HasReview]
 	};
 
 	const getCellValue = (row: UserProductListEntry, col: ColNames): string | number | boolean | Date | null | undefined => {
@@ -57,9 +57,9 @@
 				return row.product.releaseDate;
 			case Cols.ModifiedAt:
 				return row.userProductInfo.modifiedAt;
-			case Cols.MovieRating:
+			case Cols.Rating:
 				return row.userProductInfo.rate;
-			case Cols.HasMovieReview:
+			case Cols.HasReview:
 				return row.userProductInfo.reviewed;
 			case Cols.Episodes:
 				return row.userProductInfo.userShowInfo.episodesWatched;
@@ -222,6 +222,9 @@
 			<!-- COLUMN HEADERS -->
 			<tr>
 				{#each columns[selectedList] as col (col)}
+					<!-- TODO marked error at `col` - again IDEA's fail here? -->
+					{@const
+			  hint = selectedList === 'shows' && [Cols.Rating, Cols.HasReview].includes(col) && 'of last watched season'}
 					<!-- cancel th padding, add on button instead, so the whole visual header is clickable -->
 					<TableHeadCell class="!p-0">
 						<!-- borrowed from TableHeadCell.svelte-->
@@ -229,7 +232,7 @@
 											'hover:bg-gray-200 dark:hover:bg-slate-600',
 											sortColumn === col && `after:content-["${sortDirection ? '▲': '▼'}"]`]}
 						        onclick={() => sort(col)}>
-							{col}
+							<span title={hint ? hint : null}>{col}{hint ? '*' : ''}</span>
 						</button>
 					</TableHeadCell>
 				{/each}
@@ -246,14 +249,15 @@
 				              class={[!row.userProductInfo.reviewed && 'hover:bg- dark:hover:bg-']}
 				              title={row.userProductInfo.reviewed ? 'Click the row to see the review': null}>
 					{#each columns[selectedList] as col (col)}
-						<!-- max-w and overflow are for the Title ofc -->
+						<!-- max-w and overflow are for the Title ofc - to fit the widest table (Series) with
+							an overflowing title without horizontal scrolling -->
 						<TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
 							{@const cellValue = getCellDisplayValue(row, col)}
-							{#if col === Cols.HasMovieReview}
+							{#if col === Cols.HasReview}
 								{#if cellValue}
 									<AnnotationOutline />
 								{/if}
-							{:else if col === Cols.MovieRating}
+							{:else if col === Cols.Rating}
 								{#if cellValue != null}
 									{@const ratingColor = getRatingColor(castToNumber(cellValue))}
 									<!-- Rating title doesn't show: https://github.com/themesberg/flowbite-svelte/issues/1576 -->
@@ -279,6 +283,7 @@
 								</div>
 								<div class="flex-1">
 									<h4 class="mb-1 font-semibold text-gray-700 dark:text-gray-400">Reviewed
+										{selectedList === 'shows' ? 'last watched season' : ''}
 										at {row.userProductInfo.review?.reviewedAt?.toLocaleString()}:</h4>
 									<P>{row.userProductInfo.review?.body}</P>
 								</div>
