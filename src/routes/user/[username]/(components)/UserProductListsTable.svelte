@@ -27,6 +27,7 @@
 	import { isBlank } from '$lib/Strings';
 	import _ from 'lodash';
 	import { slide } from 'svelte/transition';
+	import { quintInOut } from 'svelte/easing';
 
 	console.log('Initializing UserProductListsTable');
 
@@ -276,8 +277,10 @@
 				{#if expandedRow === row}
 					<!-- not hoverable (for details see main row above) -->
 					<TableBodyRow class="hover:bg- dark:hover:bg-">
-						<TableBodyCell colspan={columns[selectedList].length}>
-							<div class="flex gap-2" transition:slide|global>
+						<!-- can't transition tr/td, so let's transition a div inside; but then gotta move the
+							cell padding to the div for smooth transitions -->
+						<TableBodyCell class="p-0" colspan={columns[selectedList].length}>
+							<div class="px-6 py-4 flex gap-2" transition:slide|global={{easing:quintInOut, duration: 200}}>
 								<div class="flex-none">
 									<hr class="w-px h-full border-0 border-l border-gray-200 dark:border-gray-700" />
 								</div>
