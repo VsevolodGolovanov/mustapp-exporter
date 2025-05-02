@@ -13,9 +13,12 @@
 	import { setSnippets } from '$lib/layout-snippets.svelte';
 	import _ from 'lodash';
 	import type { PageProps } from './$types';
-	import { sleep } from '$lib';
 	import UserProductListsTable from './(components)/UserProductListsTable.svelte';
-	import UserProductListsLoadingProgress from './(components)/UserProductListsLoadingProgress.svelte';
+	import UserProductListsLoadingProgress, {
+		progressBarTweenDuration
+	} from './(components)/UserProductListsLoadingProgress.svelte';
+	import MainContentTransition from './(components)/MainContentTransition.svelte';
+	import { sleep } from '$lib';
 
 	// tried importing icon  directly like https://flowbite-svelte.com/icons/svelte-5#Faster_compiling shows:
 	// import ArrowUpRightFromSquareOutline from 'flowbite-svelte-icons/ArrowUpRightFromSquareOutline.svelte';
@@ -34,7 +37,7 @@
 	// #await-triggering load doesn't happen fast enough when clicking the "Update" button, so it's
 	// easy to double-click the button and start a double-load - let's compensate with this additional
 	// state (alternatively could use _.throttle, but it's also faster visual feedback with the state)
-	let loading = $state(false);
+	let updating = $state(false);
 
 	// tracks number of loaded entries per list
 	let loadingUserProductListsState = $derived(_.fromPairs(listKeys.map(lk => [lk, 0])) as Record<ListKey, number>);
@@ -56,12 +59,15 @@
 			loadingUserProductListsState = _.fromPairs(listKeys.map(lk => [lk, 0])) as Record<ListKey, number>;
 		};
 	});
-	// if we just #await for data.userProductLists then the last progress bar never makes it to 100% - so let's delay the
-	// resolve a little bit
+
+	// if we just #await for data.userProductLists then the last progress bar never makes it to 100% -
+	// so let's delay the resolve until it does
 	const loadingUserProductListsDelayed = $derived(data.userdata.then(async fetchedUserdata => {
 		const fetchedUserProductLists = await fetchedUserdata.userProductLists;
-		await sleep(300);
-		loading = false;
+		if (updating) {
+			await sleep(progressBarTweenDuration);
+			updating = false;
+		}
 		return fetchedUserProductLists;
 	}));
 
@@ -86,7 +92,7 @@
 			<!-- TODO report issue: avoiding intentionally unused variable warning-->
 			<!--eslint-disable-next-line-->
 		{:then dontNeedThisHere}
-			{@render userdata(loading)}
+			{@render userdata(updating)}
 		{/await}
 	{/if}
 {/snippet}
@@ -101,7 +107,7 @@
 		https://flowbite-svelte.com/docs/components/forms#Disabled -->
 	<Button type="button" class={['ml-2 disabled:opacity-50']} disabled={loadingArg}
 	        onclick={async () => {
-						loading = true;
+						updating = true;
 						await goto('?update', { invalidateAll: true });
 						replaceState(page.url.pathname, {});
 					}}>
@@ -112,25 +118,34 @@
 	</Button>
 {/snippet}
 
-<Card class="min-w-full">
+<Card class="min-w-full relative">
 	{#await data.userdata}
+		<MainContentTransition>
 		<span class="text-black dark:text-white">
 			<RefreshOutline class="inline-block animate-spin" />
 			<span class="ml-2 align-middle">Loading user data...</span>
 		</span>
+		</MainContentTransition>
+
 	{:then fetchedUserdata}
 		{#await loadingUserProductListsDelayed}
-			<UserProductListsLoadingProgress listCounts={fetchedUserdata.listCounts}
-			                                 loadingUserProductListsState={loadingUserProductListsState} />
+			<MainContentTransition>
+				<UserProductListsLoadingProgress listCounts={fetchedUserdata.listCounts}
+				                                 loadingUserProductListsState={loadingUserProductListsState} />
+			</MainContentTransition>
+
 		{:then userProductLists}
-			{#if fetchedUserdata.profilePrivate}
-				<P>Failed to fetch data - the profile is private.</P>
-			{:else}
-				<UserProductListsTable fetchTimestamp={data.fetchTimestamp} userProductLists={userProductLists} />
-			{/if}
+			<MainContentTransition>
+				{#if fetchedUserdata.profilePrivate}
+					<P>Failed to fetch data - the profile is private.</P>
+				{:else}
+					<UserProductListsTable fetchTimestamp={data.fetchTimestamp} userProductLists={userProductLists} />
+				{/if}
+			</MainContentTransition>
 		{/await}
+
 	{:catch err}
-		<!-- handles "user not found" error from MustAppService#getProfile -->
+		<!-- handles "user not found" error in particular from MustAppService#getProfile -->
 		<P>
 			{err.body?.message ?? `Unexpected error: ${err}`}
 		</P>
