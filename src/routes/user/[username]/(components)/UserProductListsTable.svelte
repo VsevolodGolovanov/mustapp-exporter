@@ -8,6 +8,7 @@
 	} from '../(services)/MustAppService';
 	import {
 		Button,
+		Hr,
 		P,
 		Rating,
 		Search,
@@ -282,7 +283,7 @@
 						<TableBodyCell class="p-0" colspan={columns[selectedList].length}>
 							<div class="px-6 py-4 flex gap-2" transition:slide|global={{easing:quintInOut, duration: 200}}>
 								<div class="flex-none">
-									<hr class="w-px h-full border-0 border-l border-gray-200 dark:border-gray-700" />
+									<Hr classHr="w-px h-full m-0" />
 								</div>
 								<div class="flex-1">
 									<h4 class="mb-1 font-semibold text-gray-700 dark:text-gray-400">Reviewed
