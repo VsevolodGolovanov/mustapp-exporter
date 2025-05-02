@@ -2,10 +2,12 @@
 
 A web application to browse and export Must app (mustapp.com) data. Also my Svelte playground.
 
+[Here it is in action.](https://mustapp-exporter.pages.dev/)
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a
+development server:
 
 ```bash
 npm run dev
@@ -24,4 +26,5 @@ npm run build
 
 You can preview the production build with `npm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target
+> environment.
