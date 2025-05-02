@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import type { Snippet } from 'svelte';
+	import { GithubSolid } from 'flowbite-svelte-icons';
 
 	export type LayoutSnippets = { layoutHeaderCenter?: Snippet };
 </script>
@@ -32,8 +33,14 @@
 
 			<!-- fixed width matching NavBrand's width - so that layoutHeaderCenter is positioned in the
 				center and gets all the space -->
-			<div class="basis-43 shrink-0 grow-0 text-right">
-				<DarkMode />
+			<div class="basis-43 shrink-0 grow-0 flex place-content-end place-items-center gap-2">
+				<a href="https://github.com/VsevolodGolovanov/mustapp-exporter"
+				   class={["text-gray-500 dark:text-gray-400 hover:bg-gray-100",
+				    "dark:hover:bg-gray-700 focus:outline-hidden rounded-lg text-sm p-2"]}
+				   title="View on GitHub" target="_blank">
+					<GithubSolid size="lg" />
+				</a>
+				<DarkMode title="Toggle dark mode" size="lg" class="p-2" />
 			</div>
 		</Navbar>
 	</header>
