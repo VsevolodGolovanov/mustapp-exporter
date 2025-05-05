@@ -97,3 +97,34 @@ function formatErrorMessage(
 				: JSON.stringify(param);
 	});
 }
+
+/**
+ * Asserting with TypeScript's `variable!` in Svelte markup leads to annoying parser error in IDEA -
+ * so this function helps to do this in another way. Also adds a runtime check, because why not.
+ *
+ * Keep in mind that you can also do `{checkNonNullable(variable)}` in markup to assert for a whole
+ * scope.
+ *
+ * https://youtrack.jetbrains.com/issue/WEB-61819/Svelte-5-TypeScript-in-markup-expressions
+ *
+ * @param value
+ * @param errorMessageFormatString
+ * @param errorMessageParams
+ */
+export function nonNullable<T>(
+	value: T,
+	errorMessageFormatString?: string,
+	...errorMessageParams: any[]
+): NonNullable<T> {
+	// not good to reuse checkState here because it adds an extraneous frame when looking at the error
+	//checkState(value != null, errorMessageFormatString, errorMessageParams);
+
+	if (value == null) {
+		errorMessageFormatString = errorMessageFormatString || 'value is null or undefined';
+		// see this throw in the error message stack? look at frames above in the stack to understand
+		// what led to the failure
+		throw new Error(formatErrorMessage(errorMessageFormatString, ...errorMessageParams));
+	}
+
+	return value;
+}
