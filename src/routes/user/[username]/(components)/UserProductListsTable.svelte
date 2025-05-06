@@ -7,6 +7,11 @@
 	import { TableContext } from './(tableimpl)/TableContext.svelte.js';
 	import TableControlsHeader from './(tableimpl)/(header)/TableControlsHeader.svelte';
 	import ColumnSortHeader from './(tableimpl)/(header)/ColumnSortHeader.svelte';
+	import {
+		InfiniteStaticDataLoader
+	} from './(tableimpl)/(body)/(infiniteloading)/InfiniteStaticDataLoader.svelte.js';
+	import InfiniteRowLoading from './(tableimpl)/(body)/(infiniteloading)/InfiniteRowLoading.svelte';
+	import { nonNullable } from '$lib/Checks.js';
 
 	console.log('Initializing UserProductListsTable');
 
@@ -30,6 +35,11 @@
 
 	let currentUserProductListFilteredSorted =
 		$derived(tableContext.applyDataTransformationSort!(currentUserProductListFiltered));
+
+	// even a few hundred rows cause a very noticeable rendering delay and the lists can contain
+	// thousands of rows - let's render lazily with infinite loading
+	tableContext.infiniteDataLoader =
+		new InfiniteStaticDataLoader(() => currentUserProductListFilteredSorted, 50);
 </script>
 
 <!-- TODO ugh, easier to calc max-height here, than to "pass it down" from above to make "100%" work... -->
@@ -52,10 +62,12 @@
 		</TableHead>
 
 		<TableBody>
-			{#each currentUserProductListFilteredSorted as row (row)}
+			{#each nonNullable(tableContext.infiniteDataLoader).infiniteData as row (row)}
 				<MainRow {row} />
 				<ExpandedRow {row} />
 			{/each}
+
+			<InfiniteRowLoading />
 		</TableBody>
 
 	</Table>

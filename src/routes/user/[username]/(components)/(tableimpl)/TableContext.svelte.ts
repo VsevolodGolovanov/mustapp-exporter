@@ -7,6 +7,7 @@ import {
 } from '../../(services)/MustAppService';
 import { getContext, setContext } from 'svelte';
 import type { ColNames } from './Columns';
+import { InfiniteStaticDataLoader } from './(body)/(infiniteloading)/InfiniteStaticDataLoader.svelte';
 
 /**
  * Shares Table-level state with Child components to simplify decomposing the Table into parts.
@@ -37,6 +38,8 @@ export class TableContext {
 	sortColumn = $state<ColNames>();
 	sortDirection = $state(true);
 	applyDataTransformationSort?: (userProductList: UserProductList) => UserProductList;
+
+	infiniteDataLoader?: InfiniteStaticDataLoader<UserProductListEntry>;
 
 	// raw state, because don't need deep reactivity here, and it prevents using rows for identity
 	expandedRow = $state.raw<object | null>(null);
