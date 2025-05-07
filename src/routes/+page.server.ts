@@ -5,7 +5,6 @@ export const actions = {
 	getData: async ({ request }) => {
 		const data = await request.formData();
 		const username = data.get('username');
-		console.log('username submitted:', username);
 
 		if (!username || typeof username !== 'string' || username.trim() === '') {
 			return fail(400, {

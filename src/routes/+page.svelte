@@ -10,22 +10,44 @@
 	// need to reset the snippets workaround when navigating from subroute back here, otherwise
 	// subroute's snippets linger and render
 	setSnippets<LayoutSnippets>({ layoutHeaderCenter: undefined });
+
+	let privacyLearnMoreExpanded = $state(false);
 </script>
 
-<Card class="m-auto">
-	<div class="space-y-4 p-6 sm:p-8 md:space-y-6">
-		<form class="flex flex-col space-y-6" method="POST" action="?/getData" use:enhance>
-			<h3 class="p-0 text-xl font-medium text-gray-900 dark:text-white">Choose user</h3>
+<Card class="m-auto sm:p-12">
+	<form class="flex flex-col space-y-6" method="POST" action="?/getData" use:enhance>
+		<h3 class="p-0 text-xl font-medium text-gray-900 dark:text-white">Choose Must user</h3>
 
-			<Label class="space-y-2">
-				<span>Enter Must username</span>
-				<Input type="text" name="username" placeholder="Username" value={form?.username ?? ''} required />
+		<div>
+			<Label>
+				<span>Must username</span>
+				<Input type="text" name="username" placeholder="Enter username" value={form?.username ?? ''} required />
 			</Label>
+			<div class="text-xs -mt-0.5">Must profile must be public</div>
 
 			{#if form?.error}
 				<P class="text-red-500 dark:text-red-500">{form.error}</P>
 			{/if}
+		</div>
+
+		<div class="w-full flex flex-col">
 			<Button type="submit">Get Must data</Button>
-		</form>
-	</div>
+
+			<div class="text-xs">
+				<p>
+					Data stays on your device.
+					<button type="button" class="text-blue-600 hover:underline mt-1"
+					        onclick={() => privacyLearnMoreExpanded = !privacyLearnMoreExpanded}>
+						{privacyLearnMoreExpanded ? 'Show less' : 'Learn more'}
+					</button>
+				</p>
+				{#if privacyLearnMoreExpanded}
+					<div class="mt-1">
+						Username is not logged on server. Data requested directly to your browser and stored only locally on your
+						device.
+					</div>
+				{/if}
+			</div>
+		</div>
+	</form>
 </Card>
