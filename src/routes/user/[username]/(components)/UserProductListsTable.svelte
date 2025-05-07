@@ -12,6 +12,7 @@
 	} from './(tableimpl)/(body)/(infiniteloading)/InfiniteStaticDataLoader.svelte.js';
 	import InfiniteRowLoading from './(tableimpl)/(body)/(infiniteloading)/InfiniteRowLoading.svelte';
 	import { nonNullable } from '$lib/Checks.js';
+	import TableInfiniteRowLoadingFooter from './(tableimpl)/(footer)/TableInfiniteRowLoadingFooter.svelte';
 
 	console.log('Initializing UserProductListsTable');
 
@@ -38,13 +39,14 @@
 
 	// even a few hundred rows cause a very noticeable rendering delay and the lists can contain
 	// thousands of rows - let's render lazily with infinite loading
-	tableContext.infiniteDataLoader =
+	// (TanStack Virtual would be even better: https://tanstack.com/virtual/latest)
+	tableContext.infiniteRowLoader =
 		new InfiniteStaticDataLoader(() => currentUserProductListFilteredSorted, 50);
 </script>
 
 <!-- TODO ugh, easier to calc max-height here, than to "pass it down" from above to make "100%" work... -->
 <div id="table-scroll-container" class="relative overflow-y-scroll rounded-md"
-     style="max-height: calc(100vh - 11rem)">
+     style="max-height: calc(100vh - 14rem)">
 	<Table divClass="need-to-override-overflow-here-for-sticky-header-to-work" hoverable={true}>
 
 		<TableHead class="sticky top-0 normal-case" defaultRow={false}>
@@ -62,7 +64,7 @@
 		</TableHead>
 
 		<TableBody>
-			{#each nonNullable(tableContext.infiniteDataLoader).infiniteData as row (row)}
+			{#each nonNullable(tableContext.infiniteRowLoader).infiniteData as row (row)}
 				<MainRow {row} />
 				<ExpandedRow {row} />
 			{/each}
@@ -71,4 +73,7 @@
 		</TableBody>
 
 	</Table>
+
 </div>
+
+<TableInfiniteRowLoadingFooter />

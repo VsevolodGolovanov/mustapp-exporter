@@ -5,12 +5,23 @@ type Options = {
 	 * Automatically reset the `infiniteData` array when the provided data changes. True by default.
 	 *
 	 * The array should be reset in conjunction with InfiniteLoading's `identifier` value change -
-	 * that's up to you to implement.
+	 * you can set it to `loader.dataProvider()` to achieve this.
 	 */
 	readonly autoResetOnDataChange?: boolean;
 	/**
 	 * Immediately preload this amount of batches - without waiting for `handler` to be triggered.
 	 * This helps prevent flashes of empty content.
+	 *
+	 * But it breaks scrollbar resetting to the top when `reset` happens - if the scrollbar was low
+	 * enough then after reset it goes to the end of the preloaded content and forces next batch load.
+	 * Compensate by doing something like (assuming autoResetOnDataChange):
+	 *
+	 * ```
+	 * 	$effect(() => {
+	 * 		infiniteStaticDataLoader.dataProvider(); // react to data changes
+	 * 		document.getElementById('your-scroll-container')!.scrollTop = 0;
+	 * 	});
+	 * 	```
 	 */
 	readonly preloadBatchCount?: number;
 };
@@ -68,10 +79,21 @@ export class InfiniteStaticDataLoader<DATA_ITEM> {
 		}
 	}
 
-	// I don't need deep reactivity, so using raw state for better performance (not that there was a
-	// real problem)
+	/**
+	 * Use this array to render your table rows.
+	 *
+	 * I don't need deep reactivity, so using raw state for better performance (not that there was a
+	 * real problem).
+	 */
 	infiniteData = $state.raw<DATA_ITEM[]>([]);
 
+	/**
+	 * Assign this to `<InfiniteLoading on:infinite`.
+	 *
+	 * @param loaded
+	 * @param complete
+	 * @param error
+	 */
 	handler({ detail: { loaded, complete, error } }: InfiniteEvent) {
 		try {
 			const start = this.infiniteData.length;
@@ -94,7 +116,19 @@ export class InfiniteStaticDataLoader<DATA_ITEM> {
 		}
 	}
 
+	/**
+	 * Reset the `infiniteData` array. If the `autoResetOnDataChange` option doesn't work for you.
+	 *
+	 * The array should be reset in conjunction with InfiniteLoading's `identifier` value change.
+	 */
 	reset() {
 		this.infiniteData = [];
+	}
+
+	/**
+	 * Load all data at once.
+	 */
+	loadAll() {
+		this.infiniteData = this.dataProvider();
 	}
 }

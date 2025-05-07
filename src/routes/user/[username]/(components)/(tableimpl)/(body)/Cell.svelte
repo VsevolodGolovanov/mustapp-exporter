@@ -15,7 +15,9 @@
 </script>
 
 <!-- max-w and overflow are for the Title ofc - to fit the widest table (Series) with
-	an overflowing title without horizontal scrolling -->
+	an overflowing title without horizontal scrolling;
+	it would good to fix the column widths - to not have them change so much on infinite loading and
+	list switches. but the datetime columns are locale dependent. -->
 <TableBodyCell class="max-w-lg overflow-hidden overflow-ellipsis">
 	{@const cellValue = getCellDisplayValue(row, col)}
 	{#if col === Cols.HasReview}

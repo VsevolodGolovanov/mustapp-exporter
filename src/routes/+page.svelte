@@ -21,7 +21,8 @@
 		<div>
 			<Label>
 				<span>Must username</span>
-				<Input type="text" name="username" placeholder="Enter username" value={form?.username ?? ''} required />
+				<Input type="text" name="username" placeholder="Enter username" value={form?.username ?? ''}
+				       required />
 			</Label>
 			<div class="text-xs -mt-0.5">Must profile must be public</div>
 
@@ -36,15 +37,15 @@
 			<div class="text-xs">
 				<p>
 					Data stays on your device.
-					<button type="button" class="text-blue-600 hover:underline mt-1"
+					<button type="button" class="text-primary-600 dark:text-primary-500 hover:underline mt-1"
 					        onclick={() => privacyLearnMoreExpanded = !privacyLearnMoreExpanded}>
-						{privacyLearnMoreExpanded ? 'Show less' : 'Learn more'}
+						{privacyLearnMoreExpanded ? 'Show less.' : 'Learn more.'}
 					</button>
 				</p>
 				{#if privacyLearnMoreExpanded}
 					<div class="mt-1">
-						Username is not logged on server. Data requested directly to your browser and stored only locally on your
-						device.
+						Username is not logged on server. Data requested directly to your browser and stored
+						only locally on your device.
 					</div>
 				{/if}
 			</div>

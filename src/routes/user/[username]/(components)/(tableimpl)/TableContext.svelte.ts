@@ -39,7 +39,7 @@ export class TableContext {
 	sortDirection = $state(true);
 	applyDataTransformationSort?: (userProductList: UserProductList) => UserProductList;
 
-	infiniteDataLoader?: InfiniteStaticDataLoader<UserProductListEntry>;
+	infiniteRowLoader?: InfiniteStaticDataLoader<UserProductListEntry>;
 
 	// raw state, because don't need deep reactivity here, and it prevents using rows for identity
 	expandedRow = $state.raw<object | null>(null);
